@@ -80,7 +80,7 @@ contract DeployHelper {
         tokenController = TokenController(address(tokenControllerProxy));
         trustTokenProxy = OwnedUpgradeabilityProxy(trustTokenProxyAddress);
         registryProxy = OwnedUpgradeabilityProxy(registryProxyAddress);
-        registry = ProvisionalRegistryImplementation(address(registry));
+        registry = ProvisionalRegistryImplementation(registryProxyAddress);
         assuredFinancialOpportunityProxy = OwnedUpgradeabilityProxy(assuredFinancialOpportunityProxyAddress);
         aaveFinancialOpportunityProxy = OwnedUpgradeabilityProxy(aaveFinancialOpportunityProxyAddress);
         liquidatorProxy = OwnedUpgradeabilityProxy(liquidatorProxyAddress);
