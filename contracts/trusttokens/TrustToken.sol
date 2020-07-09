@@ -13,7 +13,7 @@ import {Registry} from "../registry/Registry.sol";
  * in order to prevent rewards from getting stuck in the remainder on division.
  * Tolerates dilution to slash stake and accept rewards.
  */
-contract TrustToken is ValTokenWithHook, ClaimableContract {
+contract TrustToken is TimeLockedToken {
     using SafeMath for uint256;
     Registry registry_;
     uint256 constant MAX_SUPPLY = 145000000000000000;
