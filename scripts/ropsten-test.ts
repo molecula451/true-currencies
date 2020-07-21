@@ -1,24 +1,29 @@
 import { ethers, providers } from 'ethers'
-// import { MockTrustTokenFactory } from '../build/types/MockTrustTokenFactory'
+import { MockTrustTokenFactory } from '../build/types/MockTrustTokenFactory'
 import { parseEther } from 'ethers/utils'
 import { expect, use } from 'chai'
 import { solidity } from 'ethereum-waffle'
-// import { StakedTokenFactory } from '../build/types/StakedTokenFactory'
+import { StakedTokenFactory } from '../build/types/StakedTokenFactory'
 import { RegistryImplementationFactory } from '../build/types/RegistryImplementationFactory'
-// import { AaveFinancialOpportunityFactory } from '../build/types/AaveFinancialOpportunityFactory'
-// import { AssuredFinancialOpportunityFactory } from '../build/types/AssuredFinancialOpportunityFactory'
+import { AaveFinancialOpportunityFactory } from '../build/types/AaveFinancialOpportunityFactory'
+import { AssuredFinancialOpportunityFactory } from '../build/types/AssuredFinancialOpportunityFactory'
+import { ATokenFactory } from '../build/types/ATokenFactory'
 import addresses from './deploy/ropsten.json'
 import { TrueUsdFactory } from '../build/types/TrueUsdFactory'
 import { RegistryAttributes } from './attributes'
 import { TokenFaucetFactory } from '../build/types/TokenFaucetFactory'
+import { LiquidatorFactory } from '../build/types/LiquidatorFactory'
+import { LendingPoolFactory } from '../build/types/LendingPoolFactory'
 
 use(solidity)
 
 const wait = async <T>(tx: Promise<{wait: () => Promise<T>}>): Promise<T> => (await tx).wait()
+const TRU1000 = parseEther('1000').div(1e10)
 
 describe('ropsten test', function () {
   this.timeout(10000000)
-  const provider = new providers.InfuraProvider('ropsten', '81447a33c1cd4eb09efb1e8c388fb28e')
+  // const provider = new providers.InfuraProvider('ropsten', '81447a33c1cd4eb09efb1e8c388fb28e')
+  const provider = new providers.JsonRpcProvider('https://ropsten-rpc.linkpool.io/')
   // expected to have some tUSD
   const staker = new ethers.Wallet(process.env.STAKER_KEY, provider)
   // expected to have no tUSD
@@ -26,11 +31,14 @@ describe('ropsten test', function () {
   const owner = new ethers.Wallet(process.env.OWNER_KEY, provider)
   const tusd = TrueUsdFactory.connect(addresses.trueUSD, owner)
   const faucet = TokenFaucetFactory.connect(addresses.tokenController, owner)
-  // const trustToken = MockTrustTokenFactory.connect(addresses.trustToken, owner)
-  // const stakeToken = StakedTokenFactory.connect(addresses.stakedToken, owner)
+  const stakedToken = StakedTokenFactory.connect(addresses.stakedToken, owner)
   const registry = RegistryImplementationFactory.connect(addresses.registry, owner)
-  // const aaveFinOp = AaveFinancialOpportunityFactory.connect(addresses.financialOpportunity, owner)
-  // const assuredFinOp = AssuredFinancialOpportunityFactory.connect(addresses.assuredFinancialOpportunity, owner)
+  const trustToken = MockTrustTokenFactory.connect(addresses.trustToken, owner)
+  const atoken = ATokenFactory.connect(addresses.aToken, owner)
+  const lendingPool = LendingPoolFactory.connect(addresses.lendingPool, owner)
+  const aaveFinancialOpportunity = AaveFinancialOpportunityFactory.connect(addresses.financialOpportunity, owner)
+  const assuredFinancialOpportunity = AssuredFinancialOpportunityFactory.connect(addresses.assuredFinancialOpportunity, owner)
+  const liquidator = LiquidatorFactory.connect(addresses.liquidator, owner)
 
   it('trueRewards enable-disable with 0 balance', async () => {
     expect(await tusd.balanceOf(brokePerson.address)).to.equal(0)
@@ -92,5 +100,20 @@ describe('ropsten test', function () {
     await wait(tusd.connect(brokePerson).transfer('0xE73B9F4b99CAC17723192D457234A27E7a8fBC01', await tusd.balanceOf(brokePerson.address), { gasLimit: 1000000 }))
     expect(await tusd.balanceOf(brokePerson.address)).to.equal(0)
     expect(await tusd.balanceOf('0xE73B9F4b99CAC17723192D457234A27E7a8fBC01')).to.equal(receiverBalanceBefore.add(10))
+  })
+
+  describe('Staking', () => {
+    it('Account stakes TRU on opportunity', async () => {
+      await wait(trustToken.connect(staker).approve(stakedToken.address, TRU1000))
+      await wait(trustToken.faucet(staker.address, TRU1000))
+      await wait(stakedToken.connect(staker).deposit(TRU1000))
+
+      expect(await trustToken.balanceOf(stakedToken.address)).to.eq(0)
+      expect(await stakedToken.totalSupply()).to.eq(0)
+      expect(await stakedToken.balanceOf(staker.address)).to.equal(0)
+
+      await wait(tusd.mint(owner.address, parseEther('100')))
+      await wait(tusd.connect(owner).enableTrueReward())
+    })
   })
 })

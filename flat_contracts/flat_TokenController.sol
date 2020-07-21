@@ -1,7 +1,9 @@
 
 // File: @openzeppelin/contracts/math/SafeMath.sol
 
-pragma solidity ^0.5.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -24,6 +26,7 @@ library SafeMath {
      * Counterpart to Solidity's `+` operator.
      *
      * Requirements:
+     *
      * - Addition cannot overflow.
      */
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -40,6 +43,7 @@ library SafeMath {
      * Counterpart to Solidity's `-` operator.
      *
      * Requirements:
+     *
      * - Subtraction cannot overflow.
      */
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -53,9 +57,8 @@ library SafeMath {
      * Counterpart to Solidity's `-` operator.
      *
      * Requirements:
-     * - Subtraction cannot overflow.
      *
-     * _Available since v2.4.0._
+     * - Subtraction cannot overflow.
      */
     function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b <= a, errorMessage);
@@ -71,6 +74,7 @@ library SafeMath {
      * Counterpart to Solidity's `*` operator.
      *
      * Requirements:
+     *
      * - Multiplication cannot overflow.
      */
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -96,6 +100,7 @@ library SafeMath {
      * uses an invalid opcode to revert (consuming all remaining gas).
      *
      * Requirements:
+     *
      * - The divisor cannot be zero.
      */
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -111,12 +116,10 @@ library SafeMath {
      * uses an invalid opcode to revert (consuming all remaining gas).
      *
      * Requirements:
-     * - The divisor cannot be zero.
      *
-     * _Available since v2.4.0._
+     * - The divisor cannot be zero.
      */
     function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        // Solidity only automatically asserts when dividing by 0
         require(b > 0, errorMessage);
         uint256 c = a / b;
         // assert(a == b * c + a % b); // There is no case in which this doesn't hold
@@ -133,6 +136,7 @@ library SafeMath {
      * invalid opcode to revert (consuming all remaining gas).
      *
      * Requirements:
+     *
      * - The divisor cannot be zero.
      */
     function mod(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -148,9 +152,8 @@ library SafeMath {
      * invalid opcode to revert (consuming all remaining gas).
      *
      * Requirements:
-     * - The divisor cannot be zero.
      *
-     * _Available since v2.4.0._
+     * - The divisor cannot be zero.
      */
     function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b != 0, errorMessage);
@@ -160,11 +163,12 @@ library SafeMath {
 
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
 
-pragma solidity ^0.5.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
 
 /**
- * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
- * the optional functions; to access them see {ERC20Detailed}.
+ * @dev Interface of the ERC20 standard as defined in the EIP.
  */
 interface IERC20 {
     /**
@@ -237,13 +241,18 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-// File: @trusttoken/registry/contracts/Registry.sol
+// File: contracts/registry/Registry.sol
 
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.6.10;
 
 
 interface RegistryClone {
-    function syncAttributeValue(address _who, bytes32 _attribute, uint256 _value) external;
+    function syncAttributeValue(
+        address _who,
+        bytes32 _attribute,
+        uint256 _value
+    ) external;
 }
 
 contract Registry {
@@ -271,10 +280,7 @@ contract Registry {
     bytes32 constant WRITE_PERMISSION = keccak256("canWriteTo-");
     mapping(bytes32 => RegistryClone[]) subscribers;
 
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event SetAttribute(address indexed who, bytes32 attribute, uint256 value, bytes32 notes, address indexed adminAddr);
     event SetManager(address indexed oldManager, address indexed newManager);
     event StartSubscription(bytes32 indexed attribute, RegistryClone indexed subscriber);
@@ -288,14 +294,19 @@ contract Registry {
     }
 
     // Writes are allowed only if the accessManager approves
-    function setAttribute(address _who, bytes32 _attribute, uint256 _value, bytes32 _notes) public {
+    function setAttribute(
+        address _who,
+        bytes32 _attribute,
+        uint256 _value,
+        bytes32 _notes
+    ) public {
         require(confirmWrite(_attribute, msg.sender));
         attributes[_who][_attribute] = AttributeData(_value, _notes, msg.sender, block.timestamp);
         emit SetAttribute(_who, _attribute, _value, _notes, msg.sender);
 
         RegistryClone[] storage targets = subscribers[_attribute];
         uint256 index = targets.length;
-        while (index --> 0) {
+        while (index-- > 0) {
             targets[index].syncAttributeValue(_who, _attribute, _value);
         }
     }
@@ -310,20 +321,24 @@ contract Registry {
         require(_index < length);
         emit StopSubscription(_attribute, subscribers[_attribute][_index]);
         subscribers[_attribute][_index] = subscribers[_attribute][length - 1];
-        subscribers[_attribute].length = length - 1;
+        subscribers[_attribute].pop();
     }
 
     function subscriberCount(bytes32 _attribute) public view returns (uint256) {
         return subscribers[_attribute].length;
     }
 
-    function setAttributeValue(address _who, bytes32 _attribute, uint256 _value) public {
+    function setAttributeValue(
+        address _who,
+        bytes32 _attribute,
+        uint256 _value
+    ) public {
         require(confirmWrite(_attribute, msg.sender));
         attributes[_who][_attribute] = AttributeData(_value, "", msg.sender, block.timestamp);
         emit SetAttribute(_who, _attribute, _value, "", msg.sender);
         RegistryClone[] storage targets = subscribers[_attribute];
         uint256 index = targets.length;
-        while (index --> 0) {
+        while (index-- > 0) {
             targets[index].syncAttributeValue(_who, _attribute, _value);
         }
     }
@@ -333,9 +348,17 @@ contract Registry {
         return attributes[_who][_attribute].value != 0;
     }
 
-
     // Returns the exact value of the attribute, as well as its metadata
-    function getAttribute(address _who, bytes32 _attribute) public view returns (uint256, bytes32, address, uint256) {
+    function getAttribute(address _who, bytes32 _attribute)
+        public
+        view
+        returns (
+            uint256,
+            bytes32,
+            address,
+            uint256
+        )
+    {
         AttributeData memory data = attributes[_who][_attribute];
         return (data.value, data.notes, data.adminAddr, data.timestamp);
     }
@@ -352,12 +375,16 @@ contract Registry {
         return attributes[_who][_attribute].timestamp;
     }
 
-    function syncAttribute(bytes32 _attribute, uint256 _startIndex, address[] calldata _addresses) external {
+    function syncAttribute(
+        bytes32 _attribute,
+        uint256 _startIndex,
+        address[] calldata _addresses
+    ) external {
         RegistryClone[] storage targets = subscribers[_attribute];
         uint256 index = targets.length;
-        while (index --> _startIndex) {
+        while (index-- > _startIndex) {
             RegistryClone target = targets[index];
-            for (uint256 i = _addresses.length; i --> 0; ) {
+            for (uint256 i = _addresses.length; i-- > 0; ) {
                 address who = _addresses[i];
                 target.syncAttributeValue(who, _attribute, attributes[who][_attribute].value);
             }
@@ -373,98 +400,13 @@ contract Registry {
         token.transfer(_to, balance);
     }
 
-   /**
-    * @dev Throws if called by any account other than the owner.
-    */
-    modifier onlyOwner() {
-        require(msg.sender == owner, "only Owner");
-        _;
-    }
-
-    /**
-    * @dev Modifier throws if called by any account other than the pendingOwner.
-    */
-    modifier onlyPendingOwner() {
-        require(msg.sender == pendingOwner);
-        _;
-    }
-
-    /**
-    * @dev Allows the current owner to set the pendingOwner address.
-    * @param newOwner The address to transfer ownership to.
-    */
-    function transferOwnership(address newOwner) public onlyOwner {
-        pendingOwner = newOwner;
-    }
-
-    /**
-    * @dev Allows the pendingOwner address to finalize the transfer.
-    */
-    function claimOwnership() public onlyPendingOwner {
-        emit OwnershipTransferred(owner, pendingOwner);
-        owner = pendingOwner;
-        pendingOwner = address(0);
-    }
-}
-
-// File: contracts/trueCurrencies/modularERC20/InstantiatableOwnable.sol
-
-pragma solidity 0.5.13;
-
-
-/**
- * @title InstantiatableOwnable
- * @dev The InstantiatableOwnable contract has an owner address, and provides basic authorization control
- * functions, this simplifies the implementation of "user permissions".
- */
-contract InstantiatableOwnable {
-    address public owner;
-
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
-
-    /**
-     * @dev The InstantiatableOwnable constructor sets the original `owner` of the contract to the sender
-     * account.
-     */
-    constructor() public {
-        owner = msg.sender;
-    }
-
     /**
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "only Owner");
         _;
     }
-
-    /**
-     * @dev Allows the current owner to transfer control of the contract to a newOwner.
-     * @param newOwner The address to transfer ownership to.
-     */
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0));
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-}
-
-// File: contracts/trueCurrencies/modularERC20/Claimable.sol
-
-pragma solidity 0.5.13;
-
-
-
-/**
- * @title Claimable
- * @dev Extension for the InstantiatableOwnable contract, where the ownership needs to be claimed.
- * This allows the new owner to accept the transfer.
- */
-contract Claimable is InstantiatableOwnable {
-    address public pendingOwner;
 
     /**
      * @dev Modifier throws if called by any account other than the pendingOwner.
@@ -492,9 +434,92 @@ contract Claimable is InstantiatableOwnable {
     }
 }
 
-// File: contracts/trueCurrencies/modularERC20/BalanceSheet.sol
+// File: contracts/TrueCurrencies/modularERC20/InstantiatableOwnable.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
+
+/**
+ * @title InstantiatableOwnable
+ * @dev The InstantiatableOwnable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of "user permissions".
+ */
+contract InstantiatableOwnable {
+    address public owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev The InstantiatableOwnable constructor sets the original `owner` of the contract to the sender
+     * account.
+     */
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     * @param newOwner The address to transfer ownership to.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0));
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+}
+
+// File: contracts/TrueCurrencies/deprecated/Claimable.sol
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
+
+
+/**
+ * @title Claimable
+ * @dev Extension for the InstantiatableOwnable contract, where the ownership needs to be claimed.
+ * This allows the new owner to accept the transfer.
+ */
+contract Claimable is InstantiatableOwnable {
+    address public pendingOwner;
+
+    /**
+     * @dev Modifier throws if called by any account other than the pendingOwner.
+     */
+    modifier onlyPendingOwner() {
+        require(msg.sender == pendingOwner);
+        _;
+    }
+
+    /**
+     * @dev Allows the current owner to set the pendingOwner address.
+     * @param newOwner The address to transfer ownership to.
+     */
+    function transferOwnership(address newOwner) public override onlyOwner {
+        pendingOwner = newOwner;
+    }
+
+    /**
+     * @dev Allows the pendingOwner address to finalize the transfer.
+     */
+    function claimOwnership() public onlyPendingOwner {
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
+    }
+}
+
+// File: contracts/TrueCurrencies/deprecated/BalanceSheet.sol
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -502,7 +527,7 @@ pragma solidity 0.5.13;
 contract BalanceSheet is Claimable {
     using SafeMath for uint256;
 
-    mapping (address => uint256) public balanceOf;
+    mapping(address => uint256) public balanceOf;
 
     function addBalance(address _addr, uint256 _value) public onlyOwner {
         balanceOf[_addr] = balanceOf[_addr].add(_value);
@@ -517,9 +542,10 @@ contract BalanceSheet is Claimable {
     }
 }
 
-// File: contracts/trueCurrencies/modularERC20/AllowanceSheet.sol
+// File: contracts/TrueCurrencies/deprecated/AllowanceSheet.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -527,24 +553,37 @@ pragma solidity 0.5.13;
 contract AllowanceSheet is Claimable {
     using SafeMath for uint256;
 
-    mapping (address => mapping (address => uint256)) public allowanceOf;
+    mapping(address => mapping(address => uint256)) public allowanceOf;
 
-    function addAllowance(address _tokenHolder, address _spender, uint256 _value) public onlyOwner {
+    function addAllowance(
+        address _tokenHolder,
+        address _spender,
+        uint256 _value
+    ) public onlyOwner {
         allowanceOf[_tokenHolder][_spender] = allowanceOf[_tokenHolder][_spender].add(_value);
     }
 
-    function subAllowance(address _tokenHolder, address _spender, uint256 _value) public onlyOwner {
+    function subAllowance(
+        address _tokenHolder,
+        address _spender,
+        uint256 _value
+    ) public onlyOwner {
         allowanceOf[_tokenHolder][_spender] = allowanceOf[_tokenHolder][_spender].sub(_value);
     }
 
-    function setAllowance(address _tokenHolder, address _spender, uint256 _value) public onlyOwner {
+    function setAllowance(
+        address _tokenHolder,
+        address _spender,
+        uint256 _value
+    ) public onlyOwner {
         allowanceOf[_tokenHolder][_spender] = _value;
     }
 }
 
-// File: contracts/TrueReward/FinancialOpportunity.sol
+// File: contracts/trueReward/FinancialOpportunity.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 /**
  * @title FinancialOpportunity
@@ -552,10 +591,10 @@ pragma solidity 0.5.13;
  *
  * -- Overview --
  * The goal of this contract is to allow anyone to create an opportunity
- * to earn interest on TUSD. deposit() "mints" yTUSD whcih is redeemable
- * for some amount of TUSD. TrueUSD wraps this contractwith TrustToken
+ * to earn interest on TUSD. deposit() "mints" yTUSD which is redeemable
+ * for some amount of TUSD. TrueUSD wraps this contract with TrustToken
  * Assurance, which provides protection from bugs and system design flaws
- * TUSD is a compliant stablecoin, therefore we do not allow transfers of
+ * TUSD is a compliant stable coin, therefore we do not allow transfers of
  * yTUSD, thus there are no transfer functions
  *
  * -- tokenValue() --
@@ -569,21 +608,20 @@ pragma solidity 0.5.13;
  *
  * -- totalSupply() --
  * This function returns the total supply of yTUSD issued by this contract
- * It is important to track this value accuratley and add/deduct the correct
- * amount on deposit/redemptions
+ * It is important to track this value accurately and add/deduct the correct
+ * amount on deposit/redemption
  *
  * -- Assumptions --
  * - tokenValue can never decrease
  * - total TUSD owed to depositors = tokenValue() * totalSupply()
  */
 interface FinancialOpportunity {
-
     /**
      * @dev Returns total supply of yTUSD in this contract
      *
      * @return total supply of yTUSD in this contract
-    **/
-    function totalSupply() external view returns (uint);
+     **/
+    function totalSupply() external view returns (uint256);
 
     /**
      * @dev Exchange rate between TUSD and yTUSD
@@ -592,7 +630,7 @@ interface FinancialOpportunity {
      *
      * @return TUSD / yTUSD price ratio
      */
-    function tokenValue() external view returns(uint);
+    function tokenValue() external view returns (uint256);
 
     /**
      * @dev deposits TrueUSD and returns yTUSD minted
@@ -604,7 +642,7 @@ interface FinancialOpportunity {
      * @param amount amount in TUSD to deposit
      * @return yTUSD minted from this deposit
      */
-    function deposit(address from, uint amount) external returns(uint);
+    function deposit(address from, uint256 amount) external returns (uint256);
 
     /**
      * @dev Redeem yTUSD for TUSD and withdraw to account
@@ -619,12 +657,14 @@ interface FinancialOpportunity {
      * @param amount amount in TUSD to withdraw from finOp
      * @return TUSD amount returned from this transaction
      */
-    function redeem(address to, uint amount) external returns(uint);
+    function redeem(address to, uint256 amount) external returns (uint256);
 }
 
-// File: contracts/trueCurrencies/ProxyStorage.sol
+// File: contracts/TrueCurrencies/ProxyStorage.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
+// solhint-disable max-states-count, var-name-mixedcase
 
 
 
@@ -657,13 +697,13 @@ contract ProxyStorage {
     string name_Deprecated;
     string symbol_Deprecated;
 
-    uint[] gasRefundPool_Deprecated;
+    uint256[] gasRefundPool_Deprecated;
     uint256 private redemptionAddressCount_Deprecated;
     uint256 public minimumGasPriceForFutureRefunds;
 
-    mapping (address => uint256) _balanceOf;
-    mapping (address => mapping (address => uint256)) _allowance;
-    mapping (bytes32 => mapping (address => uint256)) attributes;
+    mapping(address => uint256) _balanceOf;
+    mapping(address => mapping(address => uint256)) _allowance;
+    mapping(bytes32 => mapping(address => uint256)) attributes;
 
     // reward token storage
     mapping(address => FinancialOpportunity) finOps;
@@ -672,7 +712,10 @@ contract ProxyStorage {
 
     // true reward allocation
     // proportion: 1000 = 100%
-    struct RewardAllocation { uint proportion; address finOp; }
+    struct RewardAllocation {
+        uint256 proportion;
+        address finOp;
+    }
     mapping(address => RewardAllocation[]) _rewardDistribution;
     uint256 maxRewardProportion = 1000;
 
@@ -692,12 +735,13 @@ contract ProxyStorage {
      ** 64         uint256(address),uint256(14)                                  balanceOf
      ** 64         uint256(address),keccak256(uint256(address),uint256(15))      allowance
      ** 64         uint256(address),keccak256(bytes32,uint256(16))               attributes
-    **/
+     **/
 }
 
-// File: contracts/trueCurrencies/HasOwner.sol
+// File: contracts/TrueCurrencies/HasOwner.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 /**
@@ -707,154 +751,24 @@ pragma solidity 0.5.13;
  ProxyStorage.
  */
 contract HasOwner is ProxyStorage {
-
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /**
-    * @dev sets the original `owner` of the contract to the sender
-    * at construction. Must then be reinitialized
-    */
+     * @dev sets the original `owner` of the contract to the sender
+     * at construction. Must then be reinitialized
+     */
     constructor() public {
         owner = msg.sender;
         emit OwnershipTransferred(address(0), owner);
     }
 
     /**
-    * @dev Throws if called by any account other than the owner.
-    */
+     * @dev Throws if called by any account other than the owner.
+     */
     modifier onlyOwner() {
         require(msg.sender == owner, "only Owner");
         _;
     }
-
-    /**
-    * @dev Modifier throws if called by any account other than the pendingOwner.
-    */
-    modifier onlyPendingOwner() {
-        require(msg.sender == pendingOwner);
-        _;
-    }
-
-    /**
-    * @dev Allows the current owner to set the pendingOwner address.
-    * @param newOwner The address to transfer ownership to.
-    */
-    function transferOwnership(address newOwner) public onlyOwner {
-        pendingOwner = newOwner;
-    }
-
-    /**
-    * @dev Allows the pendingOwner address to finalize the transfer.
-    */
-    function claimOwnership() public onlyPendingOwner {
-        emit OwnershipTransferred(owner, pendingOwner);
-        owner = pendingOwner;
-        pendingOwner = address(0);
-    }
-}
-
-// File: contracts/trueCurrencies/TrueCoinReceiver.sol
-
-pragma solidity 0.5.13;
-
-contract TrueCoinReceiver {
-    function tokenFallback( address from, uint256 value ) external;
-}
-
-// File: contracts/trueCurrencies/ReclaimerToken.sol
-
-pragma solidity 0.5.13;
-
-
-contract ReclaimerToken is HasOwner {
-    /**
-    *@dev send all eth balance in the contract to another address
-    */
-    function reclaimEther(address payable _to) external onlyOwner {
-        _to.transfer(address(this).balance);
-    }
-
-    /**
-    *@dev send all token balance of an arbitary erc20 token
-    in the contract to another address
-    */
-    function reclaimToken(IERC20 token, address _to) external onlyOwner {
-        uint256 balance = token.balanceOf(address(this));
-        token.transfer(_to, balance);
-    }
-
-    /**
-    *@dev allows owner of the contract to gain ownership of any contract that the contract currently owns
-    */
-    function reclaimContract(InstantiatableOwnable _ownable) external onlyOwner {
-        _ownable.transferOwnership(owner);
-    }
-}
-
-// File: contracts/trueCurrencies/modularERC20/InitializableOwnable.sol
-
-pragma solidity 0.5.13;
-
-
-/**
- * @title InitializableOwnable
- * @dev The InitializableOwnable contract has an owner address, and provides basic authorization control
- * functions, this simplifies the implementation of "user permissions".
- */
-contract InitializableOwnable {
-    address public owner;
-    bool configured = false;
-
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
-
-    /**
-     * @dev The InitializableOwnable constructor sets the original `owner` of the contract to the sender
-     * account.
-     */
-    function _configure() internal {
-        require(!configured);
-        owner = msg.sender;
-        configured = true;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    /**
-     * @dev Allows the current owner to transfer control of the contract to a newOwner.
-     * @param newOwner The address to transfer ownership to.
-     */
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0));
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-}
-
-// File: contracts/trueCurrencies/modularERC20/InitializableClaimable.sol
-
-pragma solidity 0.5.13;
-
-
-
-/**
- * @title InitializableOwnable
- * @dev Extension for the InstantiatableOwnable contract, where the ownership needs to be claimed.
- * This allows the new owner to accept the transfer.
- */
-contract InitializableClaimable is InitializableOwnable {
-    address public pendingOwner;
 
     /**
      * @dev Modifier throws if called by any account other than the pendingOwner.
@@ -882,11 +796,189 @@ contract InitializableClaimable is InitializableOwnable {
     }
 }
 
-// File: contracts/trueCurrencies/modularERC20/ModularBasicToken.sol
+// File: contracts/TrueCurrencies/proxy/OwnedUpgradeabilityProxy.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+// solhint-disable const-name-snakecase
+pragma solidity 0.6.10;
 
+/**
+ * @title OwnedUpgradeabilityProxy
+ * @dev This contract combines an upgradeability proxy with basic authorization control functionalities
+ */
+contract OwnedUpgradeabilityProxy {
+    /**
+     * @dev Event to show ownership has been transferred
+     * @param previousOwner representing the address of the previous owner
+     * @param newOwner representing the address of the new owner
+     */
+    event ProxyOwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+    /**
+     * @dev Event to show ownership transfer is pending
+     * @param currentOwner representing the address of the current owner
+     * @param pendingOwner representing the address of the pending owner
+     */
+    event NewPendingOwner(address currentOwner, address pendingOwner);
+
+    // Storage position of the owner and pendingOwner of the contract
+    bytes32 private constant proxyOwnerPosition = 0x6279e8199720cf3557ecd8b58d667c8edc486bd1cf3ad59ea9ebdfcae0d0dfac; //keccak256("trueUSD.proxy.owner");
+    bytes32 private constant pendingProxyOwnerPosition = 0x8ddbac328deee8d986ec3a7b933a196f96986cb4ee030d86cc56431c728b83f4; //keccak256("trueUSD.pending.proxy.owner");
+
+    /**
+     * @dev the constructor sets the original owner of the contract to the sender account.
+     */
+    constructor() public {
+        _setUpgradeabilityOwner(msg.sender);
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyProxyOwner() {
+        require(msg.sender == proxyOwner(), "only Proxy Owner");
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the pending owner.
+     */
+    modifier onlyPendingProxyOwner() {
+        require(msg.sender == pendingProxyOwner(), "only pending Proxy Owner");
+        _;
+    }
+
+    /**
+     * @dev Tells the address of the owner
+     * @return owner the address of the owner
+     */
+    function proxyOwner() public view returns (address owner) {
+        bytes32 position = proxyOwnerPosition;
+        assembly {
+            owner := sload(position)
+        }
+    }
+
+    /**
+     * @dev Tells the address of the owner
+     * @return pendingOwner the address of the pending owner
+     */
+    function pendingProxyOwner() public view returns (address pendingOwner) {
+        bytes32 position = pendingProxyOwnerPosition;
+        assembly {
+            pendingOwner := sload(position)
+        }
+    }
+
+    /**
+     * @dev Sets the address of the owner
+     */
+    function _setUpgradeabilityOwner(address newProxyOwner) internal {
+        bytes32 position = proxyOwnerPosition;
+        assembly {
+            sstore(position, newProxyOwner)
+        }
+    }
+
+    /**
+     * @dev Sets the address of the owner
+     */
+    function _setPendingUpgradeabilityOwner(address newPendingProxyOwner) internal {
+        bytes32 position = pendingProxyOwnerPosition;
+        assembly {
+            sstore(position, newPendingProxyOwner)
+        }
+    }
+
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     *changes the pending owner to newOwner. But doesn't actually transfer
+     * @param newOwner The address to transfer ownership to.
+     */
+    function transferProxyOwnership(address newOwner) external onlyProxyOwner {
+        require(newOwner != address(0));
+        _setPendingUpgradeabilityOwner(newOwner);
+        emit NewPendingOwner(proxyOwner(), newOwner);
+    }
+
+    /**
+     * @dev Allows the pendingOwner to claim ownership of the proxy
+     */
+    function claimProxyOwnership() external onlyPendingProxyOwner {
+        emit ProxyOwnershipTransferred(proxyOwner(), pendingProxyOwner());
+        _setUpgradeabilityOwner(pendingProxyOwner());
+        _setPendingUpgradeabilityOwner(address(0));
+    }
+
+    /**
+     * @dev Allows the proxy owner to upgrade the current version of the proxy.
+     * @param implementation representing the address of the new implementation to be set.
+     */
+    function upgradeTo(address implementation) public virtual onlyProxyOwner {
+        address currentImplementation;
+        bytes32 position = implementationPosition;
+        assembly {
+            currentImplementation := sload(position)
+        }
+        require(currentImplementation != implementation);
+        assembly {
+            sstore(position, implementation)
+        }
+        emit Upgraded(implementation);
+    }
+
+    /**
+     * @dev This event will be emitted every time the implementation gets upgraded
+     * @param implementation representing the address of the upgraded implementation
+     */
+    event Upgraded(address indexed implementation);
+
+    // Storage position of the address of the current implementation
+    bytes32 private constant implementationPosition = 0x6e41e0fbe643dfdb6043698bf865aada82dc46b953f754a3468eaa272a362dc7; //keccak256("trueUSD.proxy.implementation");
+
+    function implementation() public view returns (address impl) {
+        bytes32 position = implementationPosition;
+        assembly {
+            impl := sload(position)
+        }
+    }
+
+    /**
+     * @dev Fallback functions allowing to perform a delegatecall to the given implementation.
+     * This function will return whatever the implementation call returns
+     */
+    fallback() external payable {
+        proxyCall();
+    }
+
+    receive() external payable {
+        proxyCall();
+    }
+
+    function proxyCall() internal {
+        bytes32 position = implementationPosition;
+
+        assembly {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, returndatasize(), calldatasize())
+            let result := delegatecall(gas(), sload(position), ptr, calldatasize(), returndatasize(), returndatasize())
+            returndatacopy(ptr, 0, returndatasize())
+
+            switch result
+                case 0 {
+                    revert(ptr, returndatasize())
+                }
+                default {
+                    return(ptr, returndatasize())
+                }
+        }
+    }
+}
+
+// File: contracts/TrueCurrencies/modularERC20/ModularBasicToken.sol
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -901,39 +993,39 @@ contract ModularBasicToken is HasOwner {
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     /**
-    * @dev total number of tokens in existence
-    */
-    function totalSupply() public view returns (uint256) {
+     * @dev total number of tokens in existence
+     */
+    function totalSupply() public virtual view returns (uint256) {
         return totalSupply_;
     }
 
-    function balanceOf(address _who) public view returns (uint256) {
+    function balanceOf(address _who) public virtual view returns (uint256) {
         return _getBalance(_who);
     }
 
-    function _getBalance(address _who) internal view returns (uint256) {
+    function _getBalance(address _who) internal virtual view returns (uint256) {
         return _balanceOf[_who];
     }
 
-    function _addBalance(address _who, uint256 _value) internal returns (uint256 priorBalance) {
+    function _addBalance(address _who, uint256 _value) internal virtual returns (uint256 priorBalance) {
         priorBalance = _balanceOf[_who];
         _balanceOf[_who] = priorBalance.add(_value);
     }
 
-    function _subBalance(address _who, uint256 _value) internal returns (uint256 result) {
+    function _subBalance(address _who, uint256 _value) internal virtual returns (uint256 result) {
         result = _balanceOf[_who].sub(_value);
         _balanceOf[_who] = result;
     }
 
-    function _setBalance(address _who, uint256 _value) internal {
+    function _setBalance(address _who, uint256 _value) internal virtual {
         _balanceOf[_who] = _value;
     }
 }
 
-// File: contracts/trueCurrencies/modularERC20/ModularStandardToken.sol
+// File: contracts/TrueCurrencies/modularERC20/ModularStandardToken.sol
 
-pragma solidity 0.5.13;
-
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -947,11 +1039,7 @@ pragma solidity 0.5.13;
 contract ModularStandardToken is ModularBasicToken {
     using SafeMath for uint256;
 
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     uint256 constant INFINITE_ALLOWANCE = 0xfe00000000000000000000000000000000000000000000000000000000000000;
 
@@ -989,10 +1077,7 @@ contract ModularStandardToken is ModularBasicToken {
      * @param _spender The address which will spend the funds.
      * @param _addedValue The amount of tokens to increase the allowance by.
      */
-    function increaseAllowance(address _spender, uint256 _addedValue)
-        public
-        returns (bool)
-    {
+    function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool) {
         _increaseAllowanceAllArgs(_spender, _addedValue, msg.sender);
         return true;
     }
@@ -1003,11 +1088,7 @@ contract ModularStandardToken is ModularBasicToken {
         address _tokenHolder
     ) internal {
         _addAllowance(_tokenHolder, _spender, _addedValue);
-        emit Approval(
-            _tokenHolder,
-            _spender,
-            _getAllowance(_tokenHolder, _spender)
-        );
+        emit Approval(_tokenHolder, _spender, _getAllowance(_tokenHolder, _spender));
     }
 
     /**
@@ -1020,10 +1101,7 @@ contract ModularStandardToken is ModularBasicToken {
      * @param _spender The address which will spend the funds.
      * @param _subtractedValue The amount of tokens to decrease the allowance by.
      */
-    function decreaseAllowance(address _spender, uint256 _subtractedValue)
-        public
-        returns (bool)
-    {
+    function decreaseAllowance(address _spender, uint256 _subtractedValue) public returns (bool) {
         _decreaseAllowanceAllArgs(_spender, _subtractedValue, msg.sender);
         return true;
     }
@@ -1044,48 +1122,46 @@ contract ModularStandardToken is ModularBasicToken {
         emit Approval(_tokenHolder, _spender, newValue);
     }
 
-    function allowance(address _who, address _spender)
-        public
-        view
-        returns (uint256)
-    {
+    function allowance(address _who, address _spender) public view returns (uint256) {
         return _getAllowance(_who, _spender);
     }
 
-    function _getAllowance(address _who, address _spender)
-        internal
-        view
-        returns (uint256 value)
-    {
+    function _getAllowance(address _who, address _spender) internal virtual view returns (uint256 value) {
         return _allowance[_who][_spender];
     }
 
-    function _addAllowance(address _who, address _spender, uint256 _value)
-        internal
-    {
+    function _addAllowance(
+        address _who,
+        address _spender,
+        uint256 _value
+    ) internal virtual {
         _allowance[_who][_spender] = _allowance[_who][_spender].add(_value);
     }
 
-    function _subAllowance(address _who, address _spender, uint256 _value)
-        internal
-        returns (uint256 newAllowance)
-    {
+    function _subAllowance(
+        address _who,
+        address _spender,
+        uint256 _value
+    ) internal virtual returns (uint256 newAllowance) {
         newAllowance = _allowance[_who][_spender].sub(_value);
         if (newAllowance < INFINITE_ALLOWANCE) {
             _allowance[_who][_spender] = newAllowance;
         }
     }
 
-    function _setAllowance(address _who, address _spender, uint256 _value)
-        internal
-    {
+    function _setAllowance(
+        address _who,
+        address _spender,
+        uint256 _value
+    ) internal virtual {
         _allowance[_who][_spender] = _value;
     }
 }
 
-// File: contracts/trueCurrencies/modularERC20/ModularBurnableToken.sol
+// File: contracts/TrueCurrencies/modularERC20/ModularBurnableToken.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 /**
@@ -1095,13 +1171,13 @@ pragma solidity 0.5.13;
 contract ModularBurnableToken is ModularStandardToken {
     event Burn(address indexed burner, uint256 value);
     event Mint(address indexed to, uint256 value);
-    uint256 constant CENT = 10 ** 16;
+    uint256 constant CENT = 10**16;
 
     function burn(uint256 _value) external {
-        _burnAllArgs(msg.sender, _value - _value % CENT);
+        _burnAllArgs(msg.sender, _value - (_value % CENT));
     }
 
-    function _burnAllArgs(address _from, uint256 _value) internal {
+    function _burnAllArgs(address _from, uint256 _value) internal virtual {
         // no need to require value <= totalSupply, since that would imply the
         // sender's balance is greater than the totalSupply, which *should* be an assertion failure
         _subBalance(_from, _value);
@@ -1111,9 +1187,52 @@ contract ModularBurnableToken is ModularStandardToken {
     }
 }
 
-// File: contracts/trueCurrencies/BurnableTokenWithBounds.sol
+// File: contracts/TrueCurrencies/TrueCoinReceiver.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
+
+interface TrueCoinReceiver {
+    function tokenFallback(address from, uint256 value) external;
+}
+
+// File: contracts/TrueCurrencies/ReclaimerToken.sol
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
+
+
+
+
+contract ReclaimerToken is HasOwner {
+    /**
+     *@dev send all eth balance in the contract to another address
+     */
+    function reclaimEther(address payable _to) external onlyOwner {
+        _to.transfer(address(this).balance);
+    }
+
+    /**
+    *@dev send all token balance of an arbitrary erc20 token
+    in the contract to another address
+    */
+    function reclaimToken(IERC20 token, address _to) external onlyOwner {
+        uint256 balance = token.balanceOf(address(this));
+        token.transfer(_to, balance);
+    }
+
+    /**
+     *@dev allows owner of the contract to gain ownership of any contract that the contract currently owns
+     */
+    function reclaimContract(InstantiatableOwnable _ownable) external onlyOwner {
+        _ownable.transferOwnership(owner);
+    }
+}
+
+// File: contracts/TrueCurrencies/BurnableTokenWithBounds.sol
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 /**
@@ -1122,10 +1241,9 @@ pragma solidity 0.5.13;
  * and will send them back the equivalent amount of money (rounded down to the nearest cent).
  */
 contract BurnableTokenWithBounds is ModularBurnableToken {
-
     event SetBurnBounds(uint256 newMin, uint256 newMax);
 
-    function _burnAllArgs(address _burner, uint256 _value) internal {
+    function _burnAllArgs(address _burner, uint256 _value) internal virtual override {
         require(_value >= burnMin, "below min burn bound");
         require(_value <= burnMax, "exceeds max burn bound");
         super._burnAllArgs(_burner, _value);
@@ -1145,19 +1263,19 @@ contract BurnableTokenWithBounds is ModularBurnableToken {
     }
 }
 
-// File: contracts/trueCurrencies/GasRefundToken.sol
+// File: contracts/TrueCurrencies/GasRefundToken.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 /**
 @title Gas Refund Token
-Allow any user to sponsor gas refunds for transfer and mints. Utilitzes the gas refund mechanism in EVM
+Allow any user to sponsor gas refunds for transfer and mints. Utilizes the gas refund mechanism in EVM
 Each time an non-empty storage slot is set to 0, evm refund 15,000 to the sender
 of the transaction.
 */
 contract GasRefundToken is ProxyStorage {
-
     /**
       A buffer of "Sheep" runs from 0xffff...fffe down
       They suicide when you call them, if you are their parent
@@ -1185,8 +1303,8 @@ contract GasRefundToken is ProxyStorage {
           1a SELFDESTRUCT   ff
         */
         assembly {
-            mstore(0, or(0x601b8060093d393df33d33730000000000000000000000000000000000000000, address))
-            mstore(32,   0x185857ff00000000000000000000000000000000000000000000000000000000)
+            mstore(0, or(0x601b8060093d393df33d33730000000000000000000000000000000000000000, address()))
+            mstore(32, 0x185857ff00000000000000000000000000000000000000000000000000000000)
             let offset := sload(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
             let location := sub(0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe, offset)
             sstore(location, create(0, 0, 0x24))
@@ -1206,11 +1324,11 @@ contract GasRefundToken is ProxyStorage {
         assembly {
             let offset := sload(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
             if gt(offset, 0) {
-              let location := sub(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,offset)
-              sstore(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, sub(offset, 1))
-              let sheep := sload(location)
-              pop(call(gas, sheep, 0, 0, 0, 0, 0))
-              sstore(location, 0)
+                let location := sub(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, offset)
+                sstore(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, sub(offset, 1))
+                let sheep := sload(location)
+                pop(call(gas(), sheep, 0, 0, 0, 0, 0))
+                sstore(location, 0)
             }
         }
     }
@@ -1260,7 +1378,7 @@ contract GasRefundToken is ProxyStorage {
             let offset := sload(0xfffff)
             if gt(offset, 1) {
                 let location := add(offset, 0xfffff)
-                if gt(gasprice,sload(location)) {
+                if gt(gasprice(), sload(location)) {
                     sstore(location, 0)
                     location := sub(location, 1)
                     sstore(location, 0)
@@ -1279,7 +1397,7 @@ contract GasRefundToken is ProxyStorage {
             let offset := sload(0xfffff)
             if gt(offset, 1) {
                 let location := add(offset, 0xfffff)
-                if gt(gasprice,sload(location)) {
+                if gt(gasprice(), sload(location)) {
                     sstore(location, 0)
                     sstore(0xfffff, sub(offset, 1))
                 }
@@ -1288,9 +1406,9 @@ contract GasRefundToken is ProxyStorage {
     }
 
     /**
-    *@dev Return the remaining sponsored gas slots
-    */
-    function remainingGasRefundPool() public view returns (uint length) {
+     *@dev Return the remaining sponsored gas slots
+     */
+    function remainingGasRefundPool() public view returns (uint256 length) {
         assembly {
             length := sload(0xfffff)
         }
@@ -1310,30 +1428,29 @@ contract GasRefundToken is ProxyStorage {
     }
 }
 
-// File: contracts/trueCurrencies/CompliantDepositTokenWithHook.sol
+// File: contracts/TrueCurrencies/CompliantDepositTokenWithHook.sol
 
-pragma solidity 0.5.13;
-
-
-
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
 
-contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, BurnableTokenWithBounds, GasRefundToken {
 
+
+abstract contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, BurnableTokenWithBounds, GasRefundToken {
     bytes32 constant IS_REGISTERED_CONTRACT = "isRegisteredContract";
     bytes32 constant IS_DEPOSIT_ADDRESS = "isDepositAddress";
     uint256 constant REDEMPTION_ADDRESS_COUNT = 0x100000;
     bytes32 constant IS_BLACKLISTED = "isBlacklisted";
 
-    function canBurn() internal pure returns (bytes32);
+    function canBurn() internal virtual pure returns (bytes32);
 
     /**
-    * @dev transfer token for a specified address
-    * @param _to The address to transfer to.
-    * @param _value The amount to be transferred.
-    */
+     * @dev transfer token for a specified address
+     * @param _to The address to transfer to.
+     * @param _value The amount to be transferred.
+     */
     function transfer(address _to, uint256 _value) public returns (bool) {
         _transferAllArgs(msg.sender, _to, _value);
         return true;
@@ -1345,12 +1462,21 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
      * @param _to address The address which you want to transfer to
      * @param _value uint256 the amount of tokens to be transferred
      */
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _value
+    ) public returns (bool) {
         _transferFromAllArgs(_from, _to, _value, msg.sender);
         return true;
     }
 
-    function _burnFromAllowanceAllArgs(address _from, address _to, uint256 _value, address _spender) internal {
+    function _burnFromAllowanceAllArgs(
+        address _from,
+        address _to,
+        uint256 _value,
+        address _spender
+    ) internal {
         _requireCanTransferFrom(_spender, _from, _to);
         _requireOnlyCanBurn(_to);
         require(_value >= burnMin, "below min burn bound");
@@ -1373,7 +1499,11 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
         emit Transfer(_to, address(0), _value);
     }
 
-    function _burnFromAllArgs(address _from, address _to, uint256 _value) internal {
+    function _burnFromAllArgs(
+        address _from,
+        address _to,
+        uint256 _value
+    ) internal {
         _requireCanTransfer(_from, _to);
         _requireOnlyCanBurn(_to);
         require(_value >= burnMin, "below min burn bound");
@@ -1389,7 +1519,12 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
         emit Transfer(_to, address(0), _value);
     }
 
-    function _transferFromAllArgs(address _from, address _to, uint256 _value, address _spender) internal returns (address) {
+    function _transferFromAllArgs(
+        address _from,
+        address _to,
+        uint256 _value,
+        address _spender
+    ) internal virtual returns (address) {
         if (uint256(_to) < REDEMPTION_ADDRESS_COUNT) {
             _value -= _value % CENT;
             _burnFromAllowanceAllArgs(_from, _to, _value, _spender);
@@ -1424,7 +1559,6 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
                     gasRefund39();
                 }
             }
-
         }
         emit Transfer(_from, _to, _value);
 
@@ -1442,7 +1576,11 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
         return finalTo;
     }
 
-    function _transferAllArgs(address _from, address _to, uint256 _value) internal returns (address) {
+    function _transferAllArgs(
+        address _from,
+        address _to,
+        uint256 _value
+    ) internal virtual returns (address) {
         if (uint256(_to) < REDEMPTION_ADDRESS_COUNT) {
             _value -= _value % CENT;
             _burnFromAllArgs(_from, _to, _value);
@@ -1479,7 +1617,7 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
         return finalTo;
     }
 
-    function mint(address _to, uint256 _value) public onlyOwner {
+    function mint(address _to, uint256 _value) public virtual onlyOwner {
         require(_to != address(0), "to address cannot be zero");
         bool hasHook;
         address originalTo = _to;
@@ -1517,11 +1655,15 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
         _;
     }
 
-    function syncAttributeValue(address _who, bytes32 _attribute, uint256 _value) public onlyRegistry {
+    function syncAttributeValue(
+        address _who,
+        bytes32 _attribute,
+        uint256 _value
+    ) public override onlyRegistry {
         attributes[_attribute][_who] = _value;
     }
 
-    function _burnAllArgs(address _from, uint256 _value) internal {
+    function _burnAllArgs(address _from, uint256 _value) internal override {
         _requireCanBurn(_from);
         super._burnAllArgs(_from, _value);
     }
@@ -1536,47 +1678,51 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
         emit Transfer(_account, address(0), oldValue);
     }
 
-    function _isBlacklisted(address _account) internal view returns (bool blacklisted) {
+    function _isBlacklisted(address _account) internal virtual view returns (bool blacklisted) {
         return attributes[IS_BLACKLISTED][_account] != 0;
     }
 
-    function _requireCanTransfer(address _from, address _to) internal view returns (address, bool) {
+    function _requireCanTransfer(address _from, address _to) internal virtual view returns (address, bool) {
         uint256 depositAddressValue = attributes[IS_DEPOSIT_ADDRESS][address(uint256(_to) >> 20)];
         if (depositAddressValue != 0) {
             _to = address(depositAddressValue);
         }
-        require (attributes[IS_BLACKLISTED][_to] == 0, "blacklisted");
-        require (attributes[IS_BLACKLISTED][_from] == 0, "blacklisted");
+        require(attributes[IS_BLACKLISTED][_to] == 0, "blacklisted");
+        require(attributes[IS_BLACKLISTED][_from] == 0, "blacklisted");
         return (_to, attributes[IS_REGISTERED_CONTRACT][_to] != 0);
     }
 
-    function _requireCanTransferFrom(address _spender, address _from, address _to) internal view returns (address, bool) {
-        require (attributes[IS_BLACKLISTED][_spender] == 0, "blacklisted");
+    function _requireCanTransferFrom(
+        address _spender,
+        address _from,
+        address _to
+    ) internal virtual view returns (address, bool) {
+        require(attributes[IS_BLACKLISTED][_spender] == 0, "blacklisted");
         uint256 depositAddressValue = attributes[IS_DEPOSIT_ADDRESS][address(uint256(_to) >> 20)];
         if (depositAddressValue != 0) {
             _to = address(depositAddressValue);
         }
-        require (attributes[IS_BLACKLISTED][_to] == 0, "blacklisted");
-        require (attributes[IS_BLACKLISTED][_from] == 0, "blacklisted");
+        require(attributes[IS_BLACKLISTED][_to] == 0, "blacklisted");
+        require(attributes[IS_BLACKLISTED][_from] == 0, "blacklisted");
         return (_to, attributes[IS_REGISTERED_CONTRACT][_to] != 0);
     }
 
-    function _requireCanMint(address _to) internal view returns (address, bool) {
+    function _requireCanMint(address _to) internal virtual view returns (address, bool) {
         uint256 depositAddressValue = attributes[IS_DEPOSIT_ADDRESS][address(uint256(_to) >> 20)];
         if (depositAddressValue != 0) {
             _to = address(depositAddressValue);
         }
-        require (attributes[IS_BLACKLISTED][_to] == 0, "blacklisted");
+        require(attributes[IS_BLACKLISTED][_to] == 0, "blacklisted");
         return (_to, attributes[IS_REGISTERED_CONTRACT][_to] != 0);
     }
 
-    function _requireOnlyCanBurn(address _from) internal view {
-        require (attributes[canBurn()][_from] != 0, "cannot burn from this address");
+    function _requireOnlyCanBurn(address _from) internal virtual view {
+        require(attributes[canBurn()][_from] != 0, "cannot burn from this address");
     }
 
-    function _requireCanBurn(address _from) internal view {
-        require (attributes[IS_BLACKLISTED][_from] == 0, "blacklisted");
-        require (attributes[canBurn()][_from] != 0, "cannot burn from this address");
+    function _requireCanBurn(address _from) internal virtual view {
+        require(attributes[IS_BLACKLISTED][_from] == 0, "blacklisted");
+        require(attributes[canBurn()][_from] != 0, "cannot burn from this address");
     }
 
     function paused() public pure returns (bool) {
@@ -1584,189 +1730,21 @@ contract CompliantDepositTokenWithHook is ReclaimerToken, RegistryClone, Burnabl
     }
 }
 
-// File: contracts/trueCurrencies/proxy/OwnedUpgradeabilityProxy.sol
+// File: contracts/TrueCurrencies/RewardToken.sol
 
-pragma solidity 0.5.13;
-
-/**
- * @title OwnedUpgradeabilityProxy
- * @dev This contract combines an upgradeability proxy with basic authorization control functionalities
- */
-contract OwnedUpgradeabilityProxy {
-    /**
-    * @dev Event to show ownership has been transferred
-    * @param previousOwner representing the address of the previous owner
-    * @param newOwner representing the address of the new owner
-    */
-    event ProxyOwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /**
-    * @dev Event to show ownership transfer is pending
-    * @param currentOwner representing the address of the current owner
-    * @param pendingOwner representing the address of the pending owner
-    */
-    event NewPendingOwner(address currentOwner, address pendingOwner);
-
-    // Storage position of the owner and pendingOwner of the contract
-    bytes32 private constant proxyOwnerPosition = 0x6279e8199720cf3557ecd8b58d667c8edc486bd1cf3ad59ea9ebdfcae0d0dfac;
-    //keccak256("trueUSD.proxy.owner");
-
-    bytes32 private constant pendingProxyOwnerPosition = 0x8ddbac328deee8d986ec3a7b933a196f96986cb4ee030d86cc56431c728b83f4;
-    //keccak256("trueUSD.pending.proxy.owner");
-
-    /**
-    * @dev the constructor sets the original owner of the contract to the sender account.
-    */
-    constructor() public {
-        _setUpgradeabilityOwner(msg.sender);
-    }
-
-    /**
-    * @dev Throws if called by any account other than the owner.
-    */
-    modifier onlyProxyOwner() {
-        require(msg.sender == proxyOwner(), "only Proxy Owner");
-        _;
-    }
-
-    /**
-    * @dev Throws if called by any account other than the pending owner.
-    */
-    modifier onlyPendingProxyOwner() {
-        require(msg.sender == pendingProxyOwner(), "only pending Proxy Owner");
-        _;
-    }
-
-    /**
-    * @dev Tells the address of the owner
-    * @return the address of the owner
-    */
-    function proxyOwner() public view returns (address owner) {
-        bytes32 position = proxyOwnerPosition;
-        assembly {
-            owner := sload(position)
-        }
-    }
-
-    /**
-    * @dev Tells the address of the owner
-    * @return the address of the owner
-    */
-    function pendingProxyOwner() public view returns (address pendingOwner) {
-        bytes32 position = pendingProxyOwnerPosition;
-        assembly {
-            pendingOwner := sload(position)
-        }
-    }
-
-    /**
-    * @dev Sets the address of the owner
-    */
-    function _setUpgradeabilityOwner(address newProxyOwner) internal {
-        bytes32 position = proxyOwnerPosition;
-        assembly {
-            sstore(position, newProxyOwner)
-        }
-    }
-
-    /**
-    * @dev Sets the address of the owner
-    */
-    function _setPendingUpgradeabilityOwner(address newPendingProxyOwner) internal {
-        bytes32 position = pendingProxyOwnerPosition;
-        assembly {
-            sstore(position, newPendingProxyOwner)
-        }
-    }
-
-    /**
-    * @dev Allows the current owner to transfer control of the contract to a newOwner.
-    *changes the pending owner to newOwner. But doesn't actually transfer
-    * @param newOwner The address to transfer ownership to.
-    */
-    function transferProxyOwnership(address newOwner) external onlyProxyOwner {
-        require(newOwner != address(0));
-        _setPendingUpgradeabilityOwner(newOwner);
-        emit NewPendingOwner(proxyOwner(), newOwner);
-    }
-
-    /**
-    * @dev Allows the pendingOwner to claim ownership of the proxy
-    */
-    function claimProxyOwnership() external onlyPendingProxyOwner {
-        emit ProxyOwnershipTransferred(proxyOwner(), pendingProxyOwner());
-        _setUpgradeabilityOwner(pendingProxyOwner());
-        _setPendingUpgradeabilityOwner(address(0));
-    }
-
-    /**
-    * @dev Allows the proxy owner to upgrade the current version of the proxy.
-    * @param implementation representing the address of the new implementation to be set.
-    */
-    function upgradeTo(address implementation) external onlyProxyOwner {
-        address currentImplementation;
-        bytes32 position = implementationPosition;
-        assembly {
-            currentImplementation := sload(position)
-        }
-        require(currentImplementation != implementation);
-        assembly {
-          sstore(position, implementation)
-        }
-        emit Upgraded(implementation);
-    }
-
-    /**
-    * @dev This event will be emitted every time the implementation gets upgraded
-    * @param implementation representing the address of the upgraded implementation
-    */
-    event Upgraded(address indexed implementation);
-
-    // Storage position of the address of the current implementation
-    bytes32 private constant implementationPosition = 0x6e41e0fbe643dfdb6043698bf865aada82dc46b953f754a3468eaa272a362dc7;
-    //keccak256("trueUSD.proxy.implementation");
-
-    function implementation() public view returns (address impl) {
-        bytes32 position = implementationPosition;
-        assembly {
-            impl := sload(position)
-        }
-    }
-
-    /**
-    * @dev Fallback function allowing to perform a delegatecall to the given implementation.
-    * This function will return whatever the implementation call returns
-    */
-    function() external payable {
-        bytes32 position = implementationPosition;
-
-        assembly {
-            let ptr := mload(0x40)
-            calldatacopy(ptr, returndatasize, calldatasize)
-            let result := delegatecall(gas, sload(position), ptr, calldatasize, returndatasize, returndatasize)
-            returndatacopy(ptr, 0, returndatasize)
-
-            switch result
-            case 0 { revert(ptr, returndatasize) }
-            default { return(ptr, returndatasize) }
-        }
-    }
-}
-
-// File: contracts/trueCurrencies/RewardToken.sol
-
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
 /**
  * @title RewardToken
- * @dev Non-transferrable token meant to represent
+ * @dev Non-transferable token meant to represent
  * RewardTokens are trueCurrencies owed by a financial opportunity
  *
  * -- Overview --
  * RewardTokens are redeemable for an underlying Token.
- * RewardTokens are non-transferrable for compliance reasons
+ * RewardTokens are non-transferable for compliance reasons
  * The caller of depositor is responsible for exchanging their
  * tokens, rather just keep accounting of user rewardToken balances
  *
@@ -1777,7 +1755,7 @@ pragma solidity 0.5.13;
  *
  * -- Mint/Redeem/Burn --
  * To create rewardTokens, we call mintRewardToken with some amount of TUSD
- * To redeem rewardTokens we call redeemRewardToken and recieve TUSD
+ * To redeem rewardTokens we call redeemRewardToken and receive TUSD
  * Only the account that has rewardTokens can burn reward tokens. The only
  * time we would want to burn rewardTokens is if the underlying opportunity
  * is no longer redeemable, and we want to wipe the debt.
@@ -1786,8 +1764,7 @@ pragma solidity 0.5.13;
  * RewardBackedToken represents trueCurrencies supply backed by Rewards
  *
  */
-contract RewardToken is CompliantDepositTokenWithHook {
-
+abstract contract RewardToken is CompliantDepositTokenWithHook {
     /* variables in proxy storage
     mapping(address => FinancialOpportunity) finOps;
     mapping(address => mapping(address => uint256)) finOpBalances;
@@ -1818,9 +1795,7 @@ contract RewardToken is CompliantDepositTokenWithHook {
      *
      * @param finOp financial opportunity
      */
-    function rewardTokenSupply(
-        address finOp
-    ) public view validFinOp(finOp) returns (uint256) {
+    function rewardTokenSupply(address finOp) public view validFinOp(finOp) returns (uint256) {
         return finOpSupply[finOp];
     }
 
@@ -1830,10 +1805,7 @@ contract RewardToken is CompliantDepositTokenWithHook {
      * @param account account to get rewardToken balance of
      * @param finOp financial opportunity
      */
-    function rewardTokenBalance(
-        address account,
-        address finOp
-    ) public view validFinOp(finOp) returns (uint256) {
+    function rewardTokenBalance(address account, address finOp) public view validFinOp(finOp) returns (uint256) {
         return finOpBalances[finOp][account];
     }
 
@@ -1921,10 +1893,7 @@ contract RewardToken is CompliantDepositTokenWithHook {
         address account,
         uint256 rewardAmount,
         address finOp
-    )
-        internal
-        validFinOp(finOp)
-    {
+    ) internal validFinOp(finOp) {
         // burn call must come from sender
         require(msg.sender == account);
 
@@ -1953,7 +1922,11 @@ contract RewardToken is CompliantDepositTokenWithHook {
      * @param amount rewardToken amount to add
      * @param finOp financial opportunity to add reward tokens to
      */
-    function _addRewardBalance(address account, uint256 amount, address finOp) internal {
+    function _addRewardBalance(
+        address account,
+        uint256 amount,
+        address finOp
+    ) internal {
         finOpBalances[finOp][account] = finOpBalances[finOp][account].add(amount);
     }
 
@@ -1961,10 +1934,14 @@ contract RewardToken is CompliantDepositTokenWithHook {
      * @dev subtract rewardToken balance from account
      *
      * @param account account to subtract from
-     * @param amount rewardToken ammount to subtract
+     * @param amount rewardToken amount to subtract
      * @param finOp financial opportunity
      */
-    function _subRewardBalance(address account, uint256 amount, address finOp) internal {
+    function _subRewardBalance(
+        address account,
+        uint256 amount,
+        address finOp
+    ) internal {
         finOpBalances[finOp][account] = finOpBalances[finOp][account].sub(amount);
     }
 
@@ -1976,7 +1953,7 @@ contract RewardToken is CompliantDepositTokenWithHook {
      */
     function _toRewardToken(uint256 amount, address finOp) internal view returns (uint256) {
         uint256 ratio = _getFinOp(finOp).tokenValue();
-        return amount.mul(10 ** 18).div(ratio);
+        return amount.mul(10**18).div(ratio);
     }
 
     /**
@@ -1985,9 +1962,9 @@ contract RewardToken is CompliantDepositTokenWithHook {
      * @param amount rewardToken amount to convert to depositToken
      * @param finOp financial opportunity address
      */
-    function _toToken(uint amount, address finOp) internal view returns (uint256) {
+    function _toToken(uint256 amount, address finOp) internal view returns (uint256) {
         uint256 ratio = _getFinOp(finOp).tokenValue();
-        return ratio.mul(amount).div(10 ** 18);
+        return ratio.mul(amount).div(10**18);
     }
 
     /**
@@ -1995,14 +1972,15 @@ contract RewardToken is CompliantDepositTokenWithHook {
      *
      * @param finOp financial opportunity to get
      */
-    function _getFinOp(address finOp) internal view returns (FinancialOpportunity) {
+    function _getFinOp(address finOp) internal pure returns (FinancialOpportunity) {
         return FinancialOpportunity(finOp);
     }
 }
 
-// File: contracts/trueCurrencies/RewardTokenWithReserve.sol
+// File: contracts/TrueCurrencies/RewardTokenWithReserve.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 /**
@@ -2016,10 +1994,9 @@ pragma solidity 0.5.13;
  * to provide swap opportunities
  *
  */
-contract RewardTokenWithReserve is RewardToken {
-
+abstract contract RewardTokenWithReserve is RewardToken {
     // Reserve is an address which nobody has the private key to
-    // Reserves of TUSD and TrueRewardBackedToken are held at this addess
+    // Reserves of TUSD and TrueRewardBackedToken are held at this address
     address public constant RESERVE = 0xf000000000000000000000000000000000000000;
 
     event ReserveDeposit(address indexed account, uint256 depositAmount, uint256 rewardTokenReturned, address indexed finOp);
@@ -2040,7 +2017,7 @@ contract RewardTokenWithReserve is RewardToken {
      * @param finOp address of financial opportunity
      * @return rewardToken balance of reserve for finOp
      */
-    function reserveRewardBalance(address finOp) public view returns (uint) {
+    function reserveRewardBalance(address finOp) public view returns (uint256) {
         return rewardTokenBalance(RESERVE, finOp);
     }
 
@@ -2058,7 +2035,7 @@ contract RewardTokenWithReserve is RewardToken {
      * @dev Allow this contract to rebalance currency reserves
      * This is called when there is too much money in an opportunity and we want
      * to get more TrueCurrency.
-     * This allows us to reduct the cost of transfers 5-10x in/out of opportunities
+     * This allows us to reduce the cost of transfers 5-10x in/out of opportunities
      *
      * @param tokenAmount amount of rewardTokens to redeem
      * @param finOp financial opportunity to redeem from
@@ -2141,22 +2118,30 @@ contract RewardTokenWithReserve is RewardToken {
      * @param finOp financial opportunity we interact with
      * @return amount of depositTokens returned to account
      */
-    function redeemWithReserve(address account, uint256 rewardAmount, address finOp) internal returns (uint256) {
+    function redeemWithReserve(
+        address account,
+        uint256 rewardAmount,
+        address finOp
+    ) internal returns (uint256) {
         // calculate deposit amount
         uint256 tokenAmount = _toToken(rewardAmount, finOp);
 
         return redeemWithReserve(account, tokenAmount, rewardAmount, finOp);
     }
 
-    function redeemWithReserve(address account, uint256 tokenAmount, uint256 rewardAmount, address finOp) internal returns (uint256) {
+    function redeemWithReserve(
+        address account,
+        uint256 tokenAmount,
+        uint256 rewardAmount,
+        address finOp
+    ) internal returns (uint256) {
         // if sufficient reserve balance, make swap and emit event
         if (reserveBalance() >= tokenAmount) {
             swapRewardForToken(account, tokenAmount, rewardAmount, finOp);
             emit ReserveRedeem(account, rewardAmount, tokenAmount, finOp);
             return tokenAmount;
-        }
-        // otherwise redeem through opportunity
-        else {
+        } else {
+            // otherwise redeem through opportunity
             return redeemRewardToken(account, rewardAmount, finOp);
         }
     }
@@ -2171,7 +2156,11 @@ contract RewardTokenWithReserve is RewardToken {
      * @param finOp financial opportunity we interact with
      * @return amount of rewardTokens exchanged to account
      */
-    function depositWithReserve(address account, uint256 depositAmount, address finOp) internal returns (uint256) {
+    function depositWithReserve(
+        address account,
+        uint256 depositAmount,
+        address finOp
+    ) internal returns (uint256) {
         // calculate reward token amount for deposit
         uint256 rewardAmount = _toRewardToken(depositAmount, finOp);
 
@@ -2180,18 +2169,17 @@ contract RewardTokenWithReserve is RewardToken {
             swapTokenForReward(account, depositAmount, rewardAmount, finOp);
             emit ReserveDeposit(account, depositAmount, rewardAmount, finOp);
             return rewardAmount;
-        }
-        // otherwise mint new rewardTokens by depositing into opportunity
-        else {
+        } else {
+            // otherwise mint new rewardTokens by depositing into opportunity
             return mintRewardToken(account, depositAmount, finOp);
         }
     }
 }
 
-// File: contracts/trueCurrencies/TrueRewardBackedToken.sol
+// File: contracts/TrueCurrencies/TrueRewardBackedToken.sol
 
-pragma solidity 0.5.13;
-
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -2214,12 +2202,12 @@ pragma solidity 0.5.13;
  *
  * -- rewardToken Assumptions --
  * We assume tokenValue never decreases for assured financial opportunities
- * rewardToken is not transferrable in that the token itself is never tranferred
+ * rewardToken is not transferable in that the token itself is never transferred
  * Rather, we override our transfer functions to account for user balances
  *
  * -- Reserve --
  * This contract uses a reserve holding of TrueCurrency and rewardToken to save on gas costs
- * because calling the financial opportunity deposit() and redeem() everytime
+ * because calling the financial opportunity deposit() and redeem() every time
  * can be expensive
  * See RewardTokenWithReserve.sol
  *
@@ -2229,8 +2217,7 @@ pragma solidity 0.5.13;
  * so some of the code is built to support this
  *
  */
-contract TrueRewardBackedToken is RewardTokenWithReserve {
-
+abstract contract TrueRewardBackedToken is RewardTokenWithReserve {
     /* variables in Proxy Storage:
     mapping(address => FinancialOpportunity) finOps;
     mapping(address => mapping(address => uint256)) finOpBalances;
@@ -2258,7 +2245,7 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
      * Equal to deposit backed TrueCurrency plus debt backed TrueCurrency
      * @return total supply in trueCurrency
      */
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public virtual override view returns (uint256) {
         // if supply in opportunity finOp, return supply of deposits + debt
         // otherwise call super to return normal totalSupply
         if (opportunityRewardSupply() != 0) {
@@ -2289,7 +2276,7 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
      * @param _who address of account to get balanceOf for
      * @return balance total balance of address including rewards
      */
-    function balanceOf(address _who) public view returns (uint256) {
+    function balanceOf(address _who) public virtual override view returns (uint256) {
         // if trueReward enabled, return token value of reward balance
         // otherwise call token balanceOf
         if (trueRewardEnabled(_who)) {
@@ -2308,7 +2295,7 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
         require(!trueRewardEnabled(msg.sender), "TrueReward already enabled");
 
         // get sender balance
-        uint balance = _getBalance(msg.sender);
+        uint256 balance = _getBalance(msg.sender);
 
         if (balance != 0) {
             // deposit entire user token balance
@@ -2330,7 +2317,7 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
         // require TrueReward is enabled
         require(trueRewardEnabled(msg.sender), "TrueReward already disabled");
         // get balance
-        uint rewardBalance = rewardTokenBalance(msg.sender, opportunity());
+        uint256 rewardBalance = rewardTokenBalance(msg.sender, opportunity());
 
         // remove reward distribution
         _removeDistribution(opportunity());
@@ -2347,9 +2334,9 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
     /**
      * @dev mint function for TrueRewardBackedToken
      * Mints TrueCurrency backed by debt
-     * When we add multiple opportunities, this needs to work for mutliple interfaces
+     * When we add multiple opportunities, this needs to work for multiple interfaces
      */
-    function mint(address _to, uint256 _value) public onlyOwner {
+    function mint(address _to, uint256 _value) public virtual override onlyOwner {
         // check if to address is enabled
         bool toEnabled = trueRewardEnabled(_to);
 
@@ -2359,9 +2346,8 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
             super.mint(address(this), _value);
             // transfer minted amount to target receiver
             _transferAllArgs(address(this), _to, _value);
-        }
-        // otherwise call normal mint process
-        else {
+        } else {
+            // otherwise call normal mint process
             super.mint(_to, _value);
         }
     }
@@ -2426,15 +2412,19 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
      * If are have opted out, call parent transferFrom, otherwise:
      * 1. If sender opted in, redeem reward tokens for true currency
      * 2. Call transferFrom, using deposit balance for transfer
-     * 3. If reciever enabled, deposit true currency into
+     * 3. If receiver enabled, deposit true currency into
      */
-    function _transferAllArgs(address _from, address _to, uint256 _value) internal returns (address) {
+    function _transferAllArgs(
+        address _from,
+        address _to,
+        uint256 _value
+    ) internal virtual override returns (address) {
         // get enabled flags and opportunity address
         bool fromEnabled = trueRewardEnabled(_from);
         bool toEnabled = trueRewardEnabled(_to);
         address finOp = opportunity();
 
-        // if both disabled or either is opportunity, tranfer normally
+        // if both disabled or either is opportunity, transfer normally
         if ((!fromEnabled && !toEnabled) || _from == finOp || _to == finOp) {
             require(super.balanceOf(_from) >= _value, "not enough balance");
             return super._transferAllArgs(_from, _to, _value);
@@ -2452,7 +2442,7 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
         // transfer tokens
         address finalTo = super._transferAllArgs(_from, _to, _value);
 
-        // if receiever enabled, deposit tokens into opportunity
+        // if receiver enabled, deposit tokens into opportunity
         if (trueRewardEnabled(finalTo)) {
             depositWithReserve(finalTo, _value, finOp);
         }
@@ -2467,20 +2457,20 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
      * If are have opted out, call parent transferFrom, otherwise:
      * 1. If sender opted in, redeem reward tokens for true currency
      * 2. Call transferFrom, using deposit balance for transfer
-     * 3. If reciever enabled, deposit true currency into
+     * 3. If receiver enabled, deposit true currency into
      */
     function _transferFromAllArgs(
         address _from,
         address _to,
         uint256 _value,
         address _spender
-    ) internal returns (address) {
+    ) internal virtual override returns (address) {
         // get enabled flags and opportunity address
         bool fromEnabled = trueRewardEnabled(_from);
         bool toEnabled = trueRewardEnabled(_to);
         address finOp = opportunity();
 
-        // if both disabled or either is opportunity, tranfer normally
+        // if both disabled or either is opportunity, transfer normally
         if ((!fromEnabled && !toEnabled) || _from == finOp || _to == finOp) {
             require(super.balanceOf(_from) >= _value, "not enough balance");
             return super._transferFromAllArgs(_from, _to, _value, _spender);
@@ -2498,7 +2488,7 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
         // transfer tokens
         address finalTo = super._transferFromAllArgs(_from, _to, _value, _spender);
 
-        // if receiever enabled, deposit tokens into opportunity
+        // if receiver enabled, deposit tokens into opportunity
         if (trueRewardEnabled(finalTo)) {
             depositWithReserve(finalTo, _value, finOp);
         }
@@ -2515,34 +2505,32 @@ contract TrueRewardBackedToken is RewardTokenWithReserve {
     function _setDistribution(uint256 proportion, address finOp) internal {
         require(proportion <= maxRewardProportion, "exceeds maximum proportion");
         require(_rewardDistribution[msg.sender].length == 0, "already enabled");
-        _rewardDistribution[msg.sender].push(
-            RewardAllocation(proportion, finOp));
+        _rewardDistribution[msg.sender].push(RewardAllocation(proportion, finOp));
     }
 
     /**
      * @dev Remove reward distribution for a financial opportunity
      * Remove
      */
-    function _removeDistribution(address finOp) internal {
-        delete _rewardDistribution[msg.sender][0];
-        _rewardDistribution[msg.sender].length--;
+    function _removeDistribution(address) internal {
+        _rewardDistribution[msg.sender].pop();
     }
 }
 
-// File: contracts/trueCurrencies/DelegateERC20.sol
+// File: contracts/TrueCurrencies/DelegateERC20.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 /** @title DelegateERC20
 Accept forwarding delegation calls from the old TrueUSD (V1) contract. This way the all the ERC20
 functions in the old contract still works (except Burn).
 */
-contract DelegateERC20 is CompliantDepositTokenWithHook {
-
+abstract contract DelegateERC20 is CompliantDepositTokenWithHook {
     address constant DELEGATE_FROM = 0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E;
 
-    modifier onlyDelegateFrom() {
+    modifier onlyDelegateFrom() virtual {
         require(msg.sender == DELEGATE_FROM);
         _;
     }
@@ -2555,7 +2543,11 @@ contract DelegateERC20 is CompliantDepositTokenWithHook {
         return _getBalance(who);
     }
 
-    function delegateTransfer(address to, uint256 value, address origSender) public onlyDelegateFrom returns (bool) {
+    function delegateTransfer(
+        address to,
+        uint256 value,
+        address origSender
+    ) public onlyDelegateFrom returns (bool) {
         _transferAllArgs(origSender, to, value);
         return true;
     }
@@ -2564,30 +2556,48 @@ contract DelegateERC20 is CompliantDepositTokenWithHook {
         return _getAllowance(owner, spender);
     }
 
-    function delegateTransferFrom(address from, address to, uint256 value, address origSender) public onlyDelegateFrom returns (bool) {
+    function delegateTransferFrom(
+        address from,
+        address to,
+        uint256 value,
+        address origSender
+    ) public onlyDelegateFrom returns (bool) {
         _transferFromAllArgs(from, to, value, origSender);
         return true;
     }
 
-    function delegateApprove(address spender, uint256 value, address origSender) public onlyDelegateFrom returns (bool) {
+    function delegateApprove(
+        address spender,
+        uint256 value,
+        address origSender
+    ) public onlyDelegateFrom returns (bool) {
         _approveAllArgs(spender, value, origSender);
         return true;
     }
 
-    function delegateIncreaseApproval(address spender, uint addedValue, address origSender) public onlyDelegateFrom returns (bool) {
+    function delegateIncreaseApproval(
+        address spender,
+        uint256 addedValue,
+        address origSender
+    ) public onlyDelegateFrom returns (bool) {
         _increaseAllowanceAllArgs(spender, addedValue, origSender);
         return true;
     }
 
-    function delegateDecreaseApproval(address spender, uint subtractedValue, address origSender) public onlyDelegateFrom returns (bool) {
+    function delegateDecreaseApproval(
+        address spender,
+        uint256 subtractedValue,
+        address origSender
+    ) public onlyDelegateFrom returns (bool) {
         _decreaseAllowanceAllArgs(spender, subtractedValue, origSender);
         return true;
     }
 }
 
-// File: contracts/trueCurrencies/TrueUSD.sol
+// File: contracts/TrueCurrencies/TrueUSD.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -2617,14 +2627,44 @@ contract TrueUSD is TrueRewardBackedToken, DelegateERC20 {
         return "TUSD";
     }
 
-    function canBurn() internal pure returns (bytes32) {
+    function canBurn() internal override pure returns (bytes32) {
         return "canBurn";
+    }
+
+    function _transferAllArgs(
+        address _from,
+        address _to,
+        uint256 _value
+    ) internal override(TrueRewardBackedToken, CompliantDepositTokenWithHook) returns (address) {
+        return TrueRewardBackedToken._transferAllArgs(_from, _to, _value);
+    }
+
+    function _transferFromAllArgs(
+        address _from,
+        address _to,
+        uint256 _value,
+        address _spender
+    ) internal override(TrueRewardBackedToken, CompliantDepositTokenWithHook) returns (address) {
+        return TrueRewardBackedToken._transferFromAllArgs(_from, _to, _value, _spender);
+    }
+
+    function balanceOf(address _who) public override(TrueRewardBackedToken, ModularBasicToken) view returns (uint256) {
+        return TrueRewardBackedToken.balanceOf(_who);
+    }
+
+    function mint(address _to, uint256 _value) public override(TrueRewardBackedToken, CompliantDepositTokenWithHook) onlyOwner {
+        return TrueRewardBackedToken.mint(_to, _value);
+    }
+
+    function totalSupply() public override(TrueRewardBackedToken, ModularBasicToken) view returns (uint256) {
+        return TrueRewardBackedToken.totalSupply();
     }
 }
 
-// File: contracts/trueCurrencies/admin/TokenController.sol
+// File: contracts/TrueCurrencies/Admin/TokenController.sol
 
-pragma solidity 0.5.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.10;
 
 
 
@@ -2676,7 +2716,6 @@ contract TokenController {
     uint256 public ratifiedMintThreshold;
     uint256 public multiSigMintThreshold;
 
-
     uint256 public instantMintLimit;
     uint256 public ratifiedMintLimit;
     uint256 public multiSigMintLimit;
@@ -2686,8 +2725,8 @@ contract TokenController {
     uint256 public multiSigMintPool;
     address[2] public ratifiedPoolRefillApprovals;
 
-    uint8 constant public RATIFY_MINT_SIGS = 1; //number of approvals needed to finalize a Ratified Mint
-    uint8 constant public MULTISIG_MINT_SIGS = 3; //number of approvals needed to finalize a MultiSig Mint
+    uint8 public constant RATIFY_MINT_SIGS = 1; //number of approvals needed to finalize a Ratified Mint
+    uint8 public constant MULTISIG_MINT_SIGS = 3; //number of approvals needed to finalize a MultiSig Mint
 
     bool public mintPaused;
     uint256 public mintReqInvalidBeforeThisBlock; //all mint request before this block are invalid
@@ -2699,13 +2738,13 @@ contract TokenController {
     address public fastPause;
     address public trueRewardManager;
 
-    bytes32 constant public IS_MINT_PAUSER = "isTUSDMintPausers";
-    bytes32 constant public IS_MINT_RATIFIER = "isTUSDMintRatifier";
-    bytes32 constant public IS_REDEMPTION_ADMIN = "isTUSDRedemptionAdmin";
+    bytes32 public constant IS_MINT_PAUSER = "isTUSDMintPausers";
+    bytes32 public constant IS_MINT_RATIFIER = "isTUSDMintRatifier";
+    bytes32 public constant IS_REDEMPTION_ADMIN = "isTUSDRedemptionAdmin";
 
     // paused version of TrueUSD in Production
     // pausing the contract upgrades the proxy to this implementation
-    address constant public PAUSED_IMPLEMENTATION = 0x3c8984DCE8f68FCDEEEafD9E0eca3598562eD291;
+    address public constant PAUSED_IMPLEMENTATION = 0x3c8984DCE8f68FCDEEEafD9E0eca3598562eD291;
 
     modifier onlyFastPauseOrOwner() {
         require(msg.sender == fastPause || msg.sender == owner, "must be pauser or owner");
@@ -2737,7 +2776,6 @@ contract TokenController {
         _;
     }
 
-
     //mint operations by the mintkey cannot be processed on when mints are paused
     modifier mintNotPaused() {
         if (msg.sender != owner) {
@@ -2760,12 +2798,12 @@ contract TokenController {
     event MintRatified(uint256 indexed opIndex, address indexed ratifier);
     event RevokeMint(uint256 opIndex);
     event AllMintsPaused(bool status);
-    event MintPaused(uint opIndex, bool status);
-    event MintApproved(address approver, uint opIndex);
+    event MintPaused(uint256 opIndex, bool status);
+    event MintApproved(address approver, uint256 opIndex);
     event FastPauseSet(address _newFastPause);
 
-    event MintThresholdChanged(uint instant, uint ratified, uint multiSig);
-    event MintLimitsChanged(uint instant, uint ratified, uint multiSig);
+    event MintThresholdChanged(uint256 instant, uint256 ratified, uint256 multiSig);
+    event MintLimitsChanged(uint256 instant, uint256 ratified, uint256 multiSig);
     event InstantPoolRefilled();
     event RatifyPoolRefilled();
     event MultiSigPoolRefilled();
@@ -2777,33 +2815,33 @@ contract TokenController {
     */
 
     /**
-    * @dev Throws if called by any account other than the owner.
-    */
+     * @dev Throws if called by any account other than the owner.
+     */
     modifier onlyOwner() {
         require(msg.sender == owner, "only Owner");
         _;
     }
 
     /**
-    * @dev Modifier throws if called by any account other than the pendingOwner.
-    */
+     * @dev Modifier throws if called by any account other than the pendingOwner.
+     */
     modifier onlyPendingOwner() {
         require(msg.sender == pendingOwner);
         _;
     }
 
     /**
-    * @dev Allows the current owner to set the pendingOwner address.
-    * @param newOwner The address to transfer ownership to.
-    */
+     * @dev Allows the current owner to set the pendingOwner address.
+     * @param newOwner The address to transfer ownership to.
+     */
     function transferOwnership(address payable newOwner) external onlyOwner {
         pendingOwner = newOwner;
         emit NewOwnerPending(address(owner), address(pendingOwner));
     }
 
     /**
-    * @dev Allows the pendingOwner address to finalize the transfer.
-    */
+     * @dev Allows the pendingOwner address to finalize the transfer.
+     */
     function claimOwnership() external onlyPendingOwner {
         emit OwnershipTransferred(address(owner), address(pendingOwner));
         owner = pendingOwner;
@@ -2838,7 +2876,11 @@ contract TokenController {
      * @dev set the threshold for a mint to be considered an instant mint, ratify mint and multiSig mint
      Instant mint requires no approval, ratify mint requires 1 approval and multiSig mint requires 3 approvals
      */
-    function setMintThresholds(uint256 _instant, uint256 _ratified, uint256 _multiSig) external onlyOwner {
+    function setMintThresholds(
+        uint256 _instant,
+        uint256 _ratified,
+        uint256 _multiSig
+    ) external onlyOwner {
         require(_instant <= _ratified && _ratified <= _multiSig);
         instantMintThreshold = _instant;
         ratifiedMintThreshold = _ratified;
@@ -2846,12 +2888,15 @@ contract TokenController {
         emit MintThresholdChanged(_instant, _ratified, _multiSig);
     }
 
-
     /**
      * @dev set the limit of each mint pool. For example can only instant mint up to the instant mint pool limit
      before needing to refill
      */
-    function setMintLimits(uint256 _instant, uint256 _ratified, uint256 _multiSig) external onlyOwner {
+    function setMintLimits(
+        uint256 _instant,
+        uint256 _ratified,
+        uint256 _multiSig
+    ) external onlyOwner {
         require(_instant <= _ratified && _ratified <= _multiSig);
         instantMintLimit = _instant;
         if (instantMintPool > instantMintLimit) {
@@ -2918,7 +2963,6 @@ contract TokenController {
         mintOperations.push(op);
     }
 
-
     /**
      * @dev Instant mint without ratification if the amount is less than instantMintThreshold and instantMintPool
      * @param _to the address to mint to
@@ -2932,7 +2976,6 @@ contract TokenController {
         token.mint(_to, _value);
     }
 
-
     /**
      * @dev ratifier ratifies a request mint. If the number of ratifiers that signed off is greater than
      the number of approvals required, the request is finalized
@@ -2940,7 +2983,11 @@ contract TokenController {
      * @param _to the address to mint to
      * @param _value the amount requested
      */
-    function ratifyMint(uint256 _index, address _to, uint256 _value) external mintNotPaused onlyMintRatifierOrOwner {
+    function ratifyMint(
+        uint256 _index,
+        address _to,
+        uint256 _value
+    ) external mintNotPaused onlyMintRatifierOrOwner {
         MintOperation memory op = mintOperations[_index];
         require(op.to == _to, "to address does not match");
         require(op.value == _value, "amount does not match");
@@ -2948,7 +2995,7 @@ contract TokenController {
         mintOperations[_index].approved[msg.sender] = true;
         mintOperations[_index].numberOfApproval = mintOperations[_index].numberOfApproval.add(1);
         emit MintRatified(_index, msg.sender);
-        if (hasEnoughApproval(mintOperations[_index].numberOfApproval, _value)){
+        if (hasEnoughApproval(mintOperations[_index].numberOfApproval, _value)) {
             finalizeMint(_index);
         }
     }
@@ -2986,12 +3033,12 @@ contract TokenController {
      */
     function hasEnoughApproval(uint256 _numberOfApproval, uint256 _value) public view returns (bool) {
         if (_value <= ratifiedMintPool && _value <= ratifiedMintThreshold) {
-            if (_numberOfApproval >= RATIFY_MINT_SIGS){
+            if (_numberOfApproval >= RATIFY_MINT_SIGS) {
                 return true;
             }
         }
         if (_value <= multiSigMintPool && _value <= multiSigMintThreshold) {
-            if (_numberOfApproval >= MULTISIG_MINT_SIGS){
+            if (_numberOfApproval >= MULTISIG_MINT_SIGS) {
                 return true;
             }
         }
@@ -3005,7 +3052,7 @@ contract TokenController {
      * @dev compute if a mint request meets all the requirements to be finalized
      utility function for a front end
      */
-    function canFinalize(uint256 _index) public view returns(bool) {
+    function canFinalize(uint256 _index) public view returns (bool) {
         MintOperation memory op = mintOperations[_index];
         require(op.requestedBlock > mintReqInvalidBeforeThisBlock, "this mint is invalid"); //also checks if request still exists
         require(!op.paused, "this mint is paused");
@@ -3014,9 +3061,9 @@ contract TokenController {
     }
 
     /**
-    *@dev revoke a mint request, Delete the mintOperation
-    *@param index of the request (visible in the RequestMint event accompanying the original request)
-    */
+     *@dev revoke a mint request, Delete the mintOperation
+     *@param _index of the request (visible in the RequestMint event accompanying the original request)
+     */
     function revokeMint(uint256 _index) external onlyMintKeyOrOwner {
         delete mintOperations[_index];
         emit RevokeMint(_index);
@@ -3033,9 +3080,9 @@ contract TokenController {
     */
 
     /**
-    *@dev Replace the current mintkey with new mintkey
-    *@param _newMintKey address of the new mintKey
-    */
+     *@dev Replace the current mintkey with new mintkey
+     *@param _newMintKey address of the new mintKey
+     */
     function transferMintKey(address _newMintKey) external onlyOwner {
         require(_newMintKey != address(0), "new mint key cannot be 0x0");
         emit TransferMintKey(mintKey, _newMintKey);
@@ -3049,42 +3096,42 @@ contract TokenController {
     */
 
     /**
-    *@dev invalidates all mint request initiated before the current block
-    */
+     *@dev invalidates all mint request initiated before the current block
+     */
     function invalidateAllPendingMints() external onlyOwner {
         mintReqInvalidBeforeThisBlock = block.number;
     }
 
     /**
-    *@dev pause any further mint request and mint finalizations
-    */
+     *@dev pause any further mint request and mint finalizations
+     */
     function pauseMints() external onlyMintPauserOrOwner {
         mintPaused = true;
         emit AllMintsPaused(true);
     }
 
     /**
-    *@dev unpause any further mint request and mint finalizations
-    */
+     *@dev unpause any further mint request and mint finalizations
+     */
     function unpauseMints() external onlyOwner {
         mintPaused = false;
         emit AllMintsPaused(false);
     }
 
     /**
-    *@dev pause a specific mint request
-    *@param  _opIndex the index of the mint request the caller wants to pause
-    */
-    function pauseMint(uint _opIndex) external onlyMintPauserOrOwner {
+     *@dev pause a specific mint request
+     *@param  _opIndex the index of the mint request the caller wants to pause
+     */
+    function pauseMint(uint256 _opIndex) external onlyMintPauserOrOwner {
         mintOperations[_opIndex].paused = true;
         emit MintPaused(_opIndex, true);
     }
 
     /**
-    *@dev unpause a specific mint request
-    *@param  _opIndex the index of the mint request the caller wants to unpause
-    */
-    function unpauseMint(uint _opIndex) external onlyOwner {
+     *@dev unpause a specific mint request
+     *@param  _opIndex the index of the mint request the caller wants to unpause
+     */
+    function unpauseMint(uint256 _opIndex) external onlyOwner {
         mintOperations[_opIndex].paused = false;
         emit MintPaused(_opIndex, false);
     }
@@ -3094,7 +3141,6 @@ contract TokenController {
     set and claim contracts, administrative
     ========================================
     */
-
 
     /**
     *@dev Update this contract's token pointer to newContract (e.g. if the
@@ -3106,24 +3152,24 @@ contract TokenController {
     }
 
     /**
-    *@dev Update this contract's registry pointer to _registry
-    */
+     *@dev Update this contract's registry pointer to _registry
+     */
     function setRegistry(Registry _registry) external onlyOwner {
         registry = _registry;
         emit SetRegistry(address(registry));
     }
 
     /**
-    *@dev Swap out token's permissions registry
-    *@param _registry new registry for token
-    */
+     *@dev Swap out token's permissions registry
+     *@param _registry new registry for token
+     */
     function setTokenRegistry(Registry _registry) external onlyOwner {
         token.setRegistry(_registry);
     }
 
     /**
-    *@dev Claim ownership of an arbitrary HasOwner contract
-    */
+     *@dev Claim ownership of an arbitrary HasOwner contract
+     */
     function issueClaimOwnership(address _other) public onlyOwner {
         HasOwner other = HasOwner(_other);
         other.claimOwnership();
@@ -3152,8 +3198,8 @@ contract TokenController {
     }
 
     /**
-    *@dev send all ether in token address to the owner of tokenController
-    */
+     *@dev send all ether in token address to the owner of tokenController
+     */
     function requestReclaimEther() external onlyOwner {
         token.reclaimEther(owner);
     }
@@ -3168,25 +3214,25 @@ contract TokenController {
     }
 
     /**
-    *@dev set new contract to which specified address can send eth to to quickly pause token
-    *@param _newFastPause address of the new contract
-    */
+     *@dev set new contract to which specified address can send eth to to quickly pause token
+     *@param _newFastPause address of the new contract
+     */
     function setFastPause(address _newFastPause) external onlyOwner {
         fastPause = _newFastPause;
         emit FastPauseSet(address(_newFastPause));
     }
 
     /**
-    *@dev pause all pausable actions on TrueUSD, mints/burn/transfer/approve
-    */
-    function pauseToken() external onlyFastPauseOrOwner {
+     *@dev pause all pausable actions on TrueUSD, mints/burn/transfer/approve
+     */
+    function pauseToken() external virtual onlyFastPauseOrOwner {
         OwnedUpgradeabilityProxy(address(uint160(address(token)))).upgradeTo(PAUSED_IMPLEMENTATION);
     }
 
     /**
-    *@dev wipe balance of a blacklisted address
-    *@param _blacklistedAddress address whose balance will be wiped
-    */
+     *@dev wipe balance of a blacklisted address
+     *@param _blacklistedAddress address whose balance will be wiped
+     */
     function wipeBlackListedTrueUSD(address _blacklistedAddress) external onlyOwner {
         token.wipeBlacklistedAccount(_blacklistedAddress);
     }
@@ -3202,18 +3248,18 @@ contract TokenController {
     }
 
     /**
-    *@dev Owner can send ether balance in contract address
-    *@param _to address to which the funds will be send to
-    */
+     *@dev Owner can send ether balance in contract address
+     *@param _to address to which the funds will be send to
+     */
     function reclaimEther(address payable _to) external onlyOwner {
         _to.transfer(address(this).balance);
     }
 
     /**
-    *@dev Owner can send erc20 token balance in contract address
-    *@param _token address of the token to send
-    *@param _to address to which the funds will be send to
-    */
+     *@dev Owner can send erc20 token balance in contract address
+     *@param _token address of the token to send
+     *@param _to address to which the funds will be send to
+     */
     function reclaimToken(IERC20 _token, address _to) external onlyOwner {
         uint256 balance = _token.balanceOf(address(this));
         _token.transfer(_to, balance);
