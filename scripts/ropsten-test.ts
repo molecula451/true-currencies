@@ -1,6 +1,6 @@
 import { ethers, providers } from 'ethers'
 import { MockTrustTokenFactory } from '../build/types/MockTrustTokenFactory'
-import { parseEther } from 'ethers/utils'
+import { formatEther, parseEther } from 'ethers/utils'
 import { expect, use } from 'chai'
 import { solidity } from 'ethereum-waffle'
 import { StakedTokenFactory } from '../build/types/StakedTokenFactory'
@@ -14,6 +14,7 @@ import { RegistryAttributes } from './attributes'
 import { TokenFaucetFactory } from '../build/types/TokenFaucetFactory'
 import { LiquidatorFactory } from '../build/types/LiquidatorFactory'
 import { LendingPoolFactory } from '../build/types/LendingPoolFactory'
+import { LendingPoolCoreFactory } from '../build/types/LendingPoolCoreFactory'
 
 use(solidity)
 
@@ -22,8 +23,8 @@ const TRU1000 = parseEther('1000').div(1e10)
 
 describe('ropsten test', function () {
   this.timeout(10000000)
-  // const provider = new providers.InfuraProvider('ropsten', '81447a33c1cd4eb09efb1e8c388fb28e')
-  const provider = new providers.JsonRpcProvider('https://ropsten-rpc.linkpool.io/')
+  const provider = new providers.InfuraProvider('ropsten', '81447a33c1cd4eb09efb1e8c388fb28e')
+  // const provider = new providers.JsonRpcProvider('https://ropsten-rpc.linkpool.io/')
   // expected to have some tUSD
   const staker = new ethers.Wallet(process.env.STAKER_KEY, provider)
   // expected to have no tUSD
@@ -108,12 +109,57 @@ describe('ropsten test', function () {
       await wait(trustToken.faucet(staker.address, TRU1000))
       await wait(stakedToken.connect(staker).deposit(TRU1000))
 
-      expect(await trustToken.balanceOf(stakedToken.address)).to.eq(0)
-      expect(await stakedToken.totalSupply()).to.eq(0)
-      expect(await stakedToken.balanceOf(staker.address)).to.equal(0)
+      expect(await trustToken.balanceOf(stakedToken.address)).to.eq(TRU1000)
+      expect(await stakedToken.totalSupply()).to.eq(TRU1000.mul(1000))
+      expect(await stakedToken.balanceOf(staker.address)).to.equal(TRU1000.mul(1000))
 
-      await wait(tusd.mint(owner.address, parseEther('100')))
-      await wait(tusd.connect(owner).enableTrueReward())
+      await wait(faucet.faucet(parseEther('100'), { gasLimit: 2000000 }))
+      await wait(tusd.connect(owner).enableTrueReward({ gasLimit: 2000000 }))
+      const lendingPoolCore = LendingPoolCoreFactory.connect(await lendingPool.core(), owner)
+      await wait(faucet.connect(brokePerson).faucet(parseEther('50'), { gasLimit: 1000000 }))
+      await wait(tusd.connect(brokePerson).approve(lendingPoolCore.address, parseEther('50')))
+      await wait(lendingPool.connect(brokePerson).deposit(tusd.address, parseEther('50'), 0, { gasLimit: 5000000 }))
+      await wait(lendingPool.connect(brokePerson).borrow(tusd.address, parseEther('5'), 2, 0, { gasLimit: 5000000 }))
+      await wait(assuredFinancialOpportunity.setRewardBasis(700))
+
+      console.log(formatEther(await assuredFinancialOpportunity.poolAwardBalance()))
+    })
+
+    it('finalize unstake', async () => {
+      const { blockNumber } = await wait(stakedToken.connect(staker).initUnstake(await stakedToken.balanceOf(staker.address)))
+      const { timestamp } = await provider.getBlock(blockNumber)
+      await wait(stakedToken.connect(staker).finalizeUnstake(staker.address, [timestamp], { gasLimit: 5000000 }))
+      console.log(formatEther(await stakedToken.balanceOf(staker.address)))
+    })
+
+    it('stakes multiple times', async () => {
+      await wait(trustToken.connect(staker).transfer(stakedToken.address, (await trustToken.balanceOf(staker.address)).div(2)))
+      await wait(trustToken.connect(staker).transfer(stakedToken.address, await trustToken.balanceOf(staker.address)))
+      const balance = await stakedToken.balanceOf(staker.address)
+      const { blockNumber: bn1 } = await wait(stakedToken.connect(staker).initUnstake(balance.div(2)))
+      const { timestamp: t1 } = await staker.provider.getBlock(bn1)
+      const { blockNumber: bn2 } = await wait(stakedToken.connect(staker).initUnstake(balance.div(2)))
+      const { timestamp: t2 } = await staker.provider.getBlock(bn2)
+      await wait(stakedToken.connect(staker).finalizeUnstake(staker.address, [1595417523, 1595417597], { gasLimit: 5000000 }))
+      console.log((await trustToken.balanceOf(staker.address)).toString())
+    })
+
+    it('staker receives reward', async () => {
+      await wait(trustToken.connect(staker).transfer(stakedToken.address, await trustToken.balanceOf(staker.address)))
+      expect(await stakedToken.unclaimedRewards(staker.address)).to.equal(0)
+      console.log((await assuredFinancialOpportunity.poolAwardBalance()).toString())
+      await wait(assuredFinancialOpportunity.awardPool({ gasLimit: 3000000 }))
+      console.log((await stakedToken.unclaimedRewards(staker.address)).toString())
+      await wait(stakedToken.connect(staker).claimRewards(staker.address, { gasLimit: 3000000, gasPrice: 50000000000 }))
+    })
+
+    it('stake transfer', async () => {
+      await wait(trustToken.faucet(staker.address, TRU1000, { gasLimit: 3000000, gasPrice: 50000000000 }))
+      await wait(trustToken.connect(staker).transfer(stakedToken.address, await trustToken.balanceOf(staker.address), { gasLimit: 3000000, gasPrice: 50000000000 }))
+      await wait(stakedToken.connect(staker).transfer(brokePerson.address, (await stakedToken.balanceOf(staker.address)).div(3), { gasLimit: 3000000, gasPrice: 50000000000 }))
+      await wait(assuredFinancialOpportunity.awardPool({ gasLimit: 3000000, gasPrice: 50000000000 }))
+      console.log((await stakedToken.unclaimedRewards(staker.address)).toString())
+      console.log((await stakedToken.unclaimedRewards(brokePerson.address)).toString())
     })
   })
 })

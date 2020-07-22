@@ -69,7 +69,7 @@ export async function deployWithExisting (accountPrivateKey: string, deployedAdd
   const fractionalExponents = await deploy('FractionalExponents')
   save(fractionalExponents, 'fractionalExponents')
 
-  const [trustTokenImplementation, trustTokenProxy, trustToken] = await deployBehindTimeProxy(wallet, 'TrustToken')
+  const [trustTokenImplementation, trustTokenProxy, trustToken] = await deployBehindTimeProxy(wallet, 'MockTrustToken')
   save(trustToken, 'trustToken')
 
   const [financialOpportunityImplementation, financialOpportunityProxy] = await deployBehindProxy(wallet, 'AaveFinancialOpportunity')
@@ -136,6 +136,12 @@ export async function deployWithExisting (accountPrivateKey: string, deployedAdd
     const proxy = contractAt('OwnedUpgradeabilityProxy', result[contractName])
     await (await proxy.transferProxyOwnership(deployHelper.address, txnArgs)).wait()
     console.log(`${contractName} proxy ownership transferred`)
+  }
+
+  const claimProxyOwnership = async (contractName: string) => {
+    const proxy = contractAt('OwnedUpgradeabilityProxy', result[contractName])
+    await (await proxy.claimProxyOwnership({ gasLimit: 5000000 })).wait()
+    console.log(`${contractName} proxy ownership claimed`)
   }
 
   await transferProxyOwnership('trustToken')
