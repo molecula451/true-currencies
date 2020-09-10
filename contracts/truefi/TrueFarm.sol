@@ -19,6 +19,9 @@ contract TrueFarm {
     mapping(address => uint256) public previousCumulatedRewardPerToken;
     mapping(address => uint256) public claimableReward;
 
+    uint256 public totalClaimedRewards;
+    uint256 public totalFarmRewards;
+
     constructor(ERC20 _stakingToken, TrueDistributor _trueDistributor) public {
         stakingToken = _stakingToken;
         trueDistributor = _trueDistributor;
@@ -40,11 +43,15 @@ contract TrueFarm {
 
     function claim() public update {
         rewardToken.transfer(msg.sender, claimableReward[msg.sender]);
+        totalClaimedRewards = totalClaimedRewards.add(claimableReward[msg.sender]);
         claimableReward[msg.sender] = 0;
     }
 
     modifier update() {
-        uint256 totalBlockReward = trueDistributor.distribute(address(this));
+        trueDistributor.distribute(address(this));
+        uint256 newTotalFarmRewards = rewardToken.balanceOf(address(this)).add(totalClaimedRewards);
+        uint256 totalBlockReward = newTotalFarmRewards.sub(totalFarmRewards);
+        totalFarmRewards = newTotalFarmRewards;
         if (totalStaked > 0) {
             cumulativeRewardPerToken += totalBlockReward.div(totalStaked);
         }
